@@ -12,6 +12,10 @@ const RestaurantDashboardWindow = () => {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [menuItem, setMenuItem] = useState({ name: "", price: "", description: "" });
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [profileForm, setProfileForm] = useState(null);
+  const [editingIndex, setEditingIndex] = useState(null);
+  const [editMenuForm, setEditMenuForm] = useState({ name: "", price: "", description: "" });
 
   // Fetch restaurant data on mount
   useEffect(() => {
@@ -26,6 +30,8 @@ const RestaurantDashboardWindow = () => {
           `http://localhost:5001/api/dashboard/get-restaurant/${restaurantId}`
         );
         setRestaurant(response.data.restaurant);
+        // initialize profile form when restaurant loads
+        setProfileForm(response.data.restaurant);
       } catch (error) {
         toast.error("Failed to load restaurant details");
         console.error(error);
@@ -72,6 +78,59 @@ const RestaurantDashboardWindow = () => {
     }
   };
 
+  const handleToggleEditProfile = () => {
+    setEditingProfile((s) => !s);
+    setProfileForm(restaurant);
+  };
+
+  const handleProfileChange = (e) => {
+    const { name, value } = e.target;
+    setProfileForm((p) => ({ ...p, [name]: value }));
+  };
+
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await axios.put(
+        `http://localhost:5001/api/dashboard/update-restaurant/${restaurantId}`,
+        profileForm
+      );
+      setRestaurant(res.data.restaurant);
+      setEditingProfile(false);
+      toast.success("Profile updated");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to update profile");
+      console.error(err);
+    }
+  };
+
+  const startEditMenu = (index) => {
+    setEditingIndex(index);
+    const item = restaurant.menu[index];
+    setEditMenuForm({ name: item.name || "", price: item.price || "", description: item.description || "" });
+  };
+
+  const cancelEditMenu = () => {
+    setEditingIndex(null);
+    setEditMenuForm({ name: "", price: "", description: "" });
+  };
+
+  const handleUpdateMenu = async (e, index) => {
+    e.preventDefault();
+    try {
+      const res = await axios.put(
+        `http://localhost:5001/api/dashboard/update-menu/${restaurantId}/${index}`,
+        editMenuForm
+      );
+      setRestaurant((r) => ({ ...r, menu: res.data.menu }));
+      setEditingIndex(null);
+      toast.success("Menu updated");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to update menu");
+      console.error(err);
+    }
+  };
+
   if (loading) {
     return (
       <div className="card w-full max-w-4xl bg-base-100 shadow-xl border border-base-300">
@@ -101,7 +160,52 @@ const RestaurantDashboardWindow = () => {
     <div className="card w-full max-w-4xl bg-base-100 shadow-xl border border-base-300">
       <div className="card-body">
         {/* Header */}
-        <h2 className="text-2xl font-bold text-center mb-6">Restaurant Dashboard</h2>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold">Restaurant Dashboard</h2>
+          <div>
+            <button className="btn btn-sm btn-outline mr-2" onClick={handleToggleEditProfile}>
+              {editingProfile ? "Close" : "Edit Profile"}
+            </button>
+          </div>
+        </div>
+
+        {editingProfile && profileForm && (
+          <form onSubmit={handleUpdateProfile} className="bg-base-200 p-4 rounded-lg mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="label"><span className="label-text">Restaurant Name</span></label>
+                <input name="RestaurantName" value={profileForm.RestaurantName || ""} onChange={handleProfileChange} className="input input-bordered w-full" />
+              </div>
+              <div>
+                <label className="label"><span className="label-text">Owner Name</span></label>
+                <input name="OwnerName" value={profileForm.OwnerName || ""} onChange={handleProfileChange} className="input input-bordered w-full" />
+              </div>
+              <div>
+                <label className="label"><span className="label-text">Email</span></label>
+                <input name="email" value={profileForm.email || ""} onChange={handleProfileChange} className="input input-bordered w-full" />
+              </div>
+              <div>
+                <label className="label"><span className="label-text">Restaurant Phone</span></label>
+                <input name="RestaurantPhone" value={profileForm.RestaurantPhone || ""} onChange={handleProfileChange} className="input input-bordered w-full" />
+              </div>
+              <div>
+                <label className="label"><span className="label-text">Owner Phone</span></label>
+                <input name="OwnerPhone" value={profileForm.OwnerPhone || ""} onChange={handleProfileChange} className="input input-bordered w-full" />
+              </div>
+              <div>
+                <label className="label"><span className="label-text">Address</span></label>
+                <input name="address" value={profileForm.address || ""} onChange={handleProfileChange} className="input input-bordered w-full" />
+              </div>
+              <div className="md:col-span-2">
+                <label className="label"><span className="label-text">Description</span></label>
+                <textarea name="description" value={profileForm.description || ""} onChange={handleProfileChange} className="textarea textarea-bordered w-full" />
+              </div>
+            </div>
+            <div className="mt-3">
+              <button type="submit" className="btn btn-primary">Save Profile</button>
+            </div>
+          </form>
+        )}
 
         {/* Restaurant Info Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -224,17 +328,41 @@ const RestaurantDashboardWindow = () => {
             ) : (
               restaurant.menu.map((item, index) => (
                 <div key={index} className="bg-base-200 p-4 rounded-lg">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h4 className="font-bold text-lg">{item.name}</h4>
-                      {item.description && (
-                        <p className="text-sm text-gray-600">{item.description}</p>
-                      )}
+                  {editingIndex === index ? (
+                    <form onSubmit={(e) => handleUpdateMenu(e, index)} className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                      <div>
+                        <label className="label"><span className="label-text">Name</span></label>
+                        <input value={editMenuForm.name} onChange={(e) => setEditMenuForm((f) => ({ ...f, name: e.target.value }))} className="input input-bordered w-full" />
+                      </div>
+                      <div>
+                        <label className="label"><span className="label-text">Price</span></label>
+                        <input type="number" value={editMenuForm.price} onChange={(e) => setEditMenuForm((f) => ({ ...f, price: e.target.value }))} className="input input-bordered w-full" />
+                      </div>
+                      <div>
+                        <label className="label"><span className="label-text">Description</span></label>
+                        <input value={editMenuForm.description} onChange={(e) => setEditMenuForm((f) => ({ ...f, description: e.target.value }))} className="input input-bordered w-full" />
+                      </div>
+                      <div className="md:col-span-3 flex gap-2">
+                        <button type="submit" className="btn btn-sm btn-success">Save</button>
+                        <button type="button" onClick={cancelEditMenu} className="btn btn-sm">Cancel</button>
+                      </div>
+                    </form>
+                  ) : (
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h4 className="font-bold text-lg">{item.name}</h4>
+                        {item.description && (
+                          <p className="text-sm text-gray-600">{item.description}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="text-xl font-bold text-primary">
+                          ${parseFloat(item.price || 0).toFixed(2)}
+                        </div>
+                        <button className="btn btn-sm" onClick={() => startEditMenu(index)}>Edit</button>
+                      </div>
                     </div>
-                    <div className="text-xl font-bold text-primary ml-4">
-                      ${parseFloat(item.price || 0).toFixed(2)}
-                    </div>
-                  </div>
+                  )}
                 </div>
               ))
             )}

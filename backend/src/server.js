@@ -15,7 +15,6 @@ app.use(express.json()); //Give access to req.body; Middleware - used for auth c
 //-------------------------------APIs------------------------------------
 app.use("/api/signup", signupRoutes);
 app.use("/api/dashboard", dashboardRoutes);
-app.use("/api/dashboard", dashboardRoutes);
 
 connectDB().then(() => {
   app.listen(5001, () => {
