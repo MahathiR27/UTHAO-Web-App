@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
+import { useNavigate } from "react-router";
 
 const RestaurantCreateWindow = () => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     RestaurantName: "",
     OwnerName: "",
@@ -41,6 +43,14 @@ const RestaurantCreateWindow = () => {
         RestaurantPhone: "",
         OwnerPhone: "",
       });
+
+      if (res.ok) {
+
+        const restaurantId = res.data.restaurant._id;
+        navigate(`/restaurant-dashboard?id=${restaurantId}`);
+
+      }
+
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to register restaurant");
     }

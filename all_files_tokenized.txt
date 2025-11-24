@@ -1,0 +1,112 @@
+--- c:/Users/the8b/URAW-Web-App/README.md ---
+# URAW-Web-App
+
+## Backend Dependencies
+
+Install required packages with npm:
+
+npm install express@4.18.2 mongoose@8.14.3 dotenv nodemon -D
+npm install cors
+
+## Frontend Dependencies
+
+Install required packages with npm:
+
+npm install
+
+## Server Startup
+
+npm run dev
+
+--- c:/Users/the8b/URAW-Web-App/frontend/src/main.jsx ---
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import "./index.css";
+import App from "./App.jsx";
+import { BrowserRouter } from "react-router";
+
+createRoot(document.getElementById("root")).render(
+  <StrictMode>
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>
+  </StrictMode>
+);
+
+--- c:/Users/the8b/URAW-Web-App/frontend/src/App.jsx ---
+import React from "react";
+import { Route, Routes } from "react-router";
+
+import LoginPage from "./pages/LoginPage";
+import ProfilePage from "./pages/ProfilePage";
+import RestaurantCreatePage from "./pages/RestaurantCreatePage";
+import RestaurantDashboardPage from "./pages/RestaurantDashboardPage";
+import SignupPage from "./pages/SignupPage";
+import UserCreatePage from "./pages/UserCreatePage";
+
+const App = () => {
+  return (
+    <div data-theme="luxury">
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignupPage />} />
+        <Route path="/profile/:id" element={<ProfilePage />} />{" "}
+        {/* :id will be able to change dynamically for different profiles */}
+        <Route path="/create-restaurant" element={<RestaurantCreatePage />} />
+        <Route path="/restaurant-dashboard" element={<RestaurantDashboardPage />} />
+        <Route path="/create-user" element={<UserCreatePage />} />
+      </Routes>
+    </div>
+  );
+};
+
+export default App;
+
+--- c:/Users/the8b/URAW-Web-App/frontend/src/pages/RestaurantDashboardPage.jsx ---
+import React from "react";
+import RestaurantDashboardWindow from "../components/RestaurantDashboardWindow";
+
+const RestaurantDashboardPage = () => {
+  return (
+    <div className="min-h-screen bg-base-300 p-4 md:p-8">
+      <div className="flex items-center justify-center">
+        <RestaurantDashboardWindow />
+      </div>
+    </div>
+  );
+};
+
+export default RestaurantDashboardPage;
+
+--- c:/Users/the8b/URAW-Web-App/frontend/src/components/RestaurantDashboardWindow.jsx ---
+(imported code here)
+--- c:/Users/the8b/URAW-Web-App/backend/src/server.js ---
+(imported code here)
+--- c:/Users/the8b/URAW-Web-App/backend/src/routes/dashboardRoutes.js ---
+(imported code here)
+--- c:/Users/the8b/URAW-Web-App/backend/src/controllers/restaurantController.js ---
+(imported code here)
+--- c:/Users/the8b/URAW-Web-App/backend/src/modules/restaurantReg.js ---
+(imported code here)
+--- c:/Users/the8b/URAW-Web-App/backend/package.json ---
+(imported code here)
+--- c:/Users/the8b/URAW-Web-App/frontend/package.json ---
+(imported code here)
+--- c:/Users/the8b/URAW-Web-App/frontend/index.html ---
+(imported code here)
+--- c:/Users/the8b/URAW-Web-App/frontend/src/components/UserCreateWindow.jsx ---
+(imported code here)
+--- c:/Users/the8b/URAW-Web-App/frontend/src/components/SignupWindow.jsx ---
+(imported code here)
+--- c:/Users/the8b/URAW-Web-App/frontend/src/components/LoginWindow.jsx ---
+(imported code here)
+--- c:/Users/the8b/URAW-Web-App/frontend/src/pages/RestaurantCreatePage.jsx ---
+(imported code here)
+--- c:/Users/the8b/URAW-Web-App/frontend/src/pages/SignupPage.jsx ---
+(imported code here)
+--- c:/Users/the8b/URAW-Web-App/frontend/src/pages/UserCreatePage.jsx ---
+(imported code here)
+--- c:/Users/the8b/URAW-Web-App/frontend/src/pages/ProfilePage.jsx ---
+(imported code here)
+--- c:/Users/the8b/URAW-Web-App/frontend/src/pages/LoginPage.jsx ---
+(imported code here)

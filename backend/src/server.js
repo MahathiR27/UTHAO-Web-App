@@ -1,8 +1,8 @@
+import dashboardRoutes from "./routes/dashboardRoutes.js"
 import express from "express";
 import { connectDB } from "./config/db.js";
 import dotenv from "dotenv";
-import restaurantRoutes from "./routes/restaurantRoutes.js";
-import userRoutes from "./routes/userRoutes.js";
+import signupRoutes from "./routes/signupRoutes.js";
 import cors from "cors";
 
 dotenv.config(); // Initializing the .env naile you cant access anything from that file
@@ -13,8 +13,9 @@ app.use(cors());//so frontend can send data to backend
 app.use(express.json()); //Give access to req.body; Middleware - used for auth check; Ratelimiter - used to control how many time one can send api request.
 
 //-------------------------------APIs------------------------------------
-app.use("/api/signup", restaurantRoutes);
-app.use("/api/signup", userRoutes);
+app.use("/api/signup", signupRoutes);
+app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/dashboard", dashboardRoutes);
 
 connectDB().then(() => {
   app.listen(5001, () => {

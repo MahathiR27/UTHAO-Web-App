@@ -1,0 +1,248 @@
+import { useEffect, useState } from "react";
+import { useLocation } from "react-router";
+import axios from "axios";
+import toast from "react-hot-toast";
+
+const RestaurantDashboardWindow = () => {
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const restaurantId = params.get("id");
+
+  const [restaurant, setRestaurant] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [menuItem, setMenuItem] = useState({ name: "", price: "", description: "" });
+
+  // Fetch restaurant data on mount
+  useEffect(() => {
+    if (!restaurantId) {
+      setLoading(false);
+      return;
+    }
+
+    const fetchRestaurant = async () => {
+      try {
+        const response = await axios.get(
+          `http://localhost:5001/api/dashboard/get-restaurant/${restaurantId}`
+        );
+        setRestaurant(response.data.restaurant);
+      } catch (error) {
+        toast.error("Failed to load restaurant details");
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRestaurant();
+  }, [restaurantId]);
+
+  // Handle adding a new menu item
+  const handleAddMenuItem = async (e) => {
+    e.preventDefault();
+
+    if (!menuItem.name.trim()) {
+      toast.error("Menu item name is required");
+      return;
+    }
+
+    try {
+      const response = await axios.post(
+        `http://localhost:5001/api/dashboard/add-menu/${restaurantId}`,
+        {
+          name: menuItem.name,
+          price: menuItem.price || 0,
+          description: menuItem.description,
+        }
+      );
+
+      // Update local restaurant state with new menu
+      setRestaurant({
+        ...restaurant,
+        menu: response.data.menu,
+      });
+
+      // Reset form
+      setMenuItem({ name: "", price: "", description: "" });
+      setShowForm(false);
+      toast.success("Menu item added successfully");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to add menu item");
+      console.error(error);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="card w-full max-w-4xl bg-base-100 shadow-xl border border-base-300">
+        <div className="card-body items-center justify-center">
+          <span className="loading loading-spinner loading-lg"></span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!restaurant) {
+    return (
+      <div className="card w-full max-w-4xl bg-base-100 shadow-xl border border-base-300">
+        <div className="card-body">
+          <h2 className="text-2xl font-bold text-center mb-4">Restaurant Dashboard</h2>
+          <p className="text-center text-error">No restaurant ID provided. Use ?id=RESTAURANT_ID in the URL.</p>
+        </div>
+        <div className="mt-3 text-sm text-center text-muted">
+            <div>Debug: location.search = <code>{location.search}</code></div>
+            <div>Debug: parsed id = <code>{restaurantId}</code></div>
+          </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="card w-full max-w-4xl bg-base-100 shadow-xl border border-base-300">
+      <div className="card-body">
+        {/* Header */}
+        <h2 className="text-2xl font-bold text-center mb-6">Restaurant Dashboard</h2>
+
+        {/* Restaurant Info Section */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          {/* Left Column - Main Info */}
+          <div className="bg-base-200 p-4 rounded-lg">
+            <h3 className="text-xl font-bold mb-3">{restaurant.RestaurantName}</h3>
+            <p className="text-sm mb-4">{restaurant.description || "No description provided"}</p>
+
+            <div className="space-y-2 text-sm">
+              <div>
+                <strong>Owner:</strong> {restaurant.OwnerName}
+              </div>
+              <div>
+                <strong>Email:</strong> {restaurant.email}
+              </div>
+              <div>
+                <strong>Phone:</strong> {restaurant.RestaurantPhone}
+              </div>
+              <div>
+                <strong>Address:</strong> {restaurant.address}
+              </div>
+              {restaurant.OwnerPhone && (
+                <div>
+                  <strong>Owner Phone:</strong> {restaurant.OwnerPhone}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right Column - Stats */}
+          <div className="bg-base-200 p-4 rounded-lg flex flex-col justify-between">
+            <div>
+              <h4 className="font-bold text-lg mb-3">Menu Statistics</h4>
+              <div className="stats shadow">
+                <div className="stat">
+                  <div className="stat-title">Total Items</div>
+                  <div className="stat-value text-primary">
+                    {restaurant.menu ? restaurant.menu.length : 0}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Menu Section */}
+        <div className="divider"></div>
+
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-bold">Menu Items</h3>
+            <button
+              className="btn btn-sm btn-primary"
+              onClick={() => setShowForm(!showForm)}
+            >
+              {showForm ? "Cancel" : "+ Add Menu Item"}
+            </button>
+          </div>
+
+          {/* Add Menu Form */}
+          {showForm && (
+            <form onSubmit={handleAddMenuItem} className="bg-base-200 p-4 rounded-lg mb-4">
+              <div className="space-y-3">
+                <div>
+                  <label className="label">
+                    <span className="label-text">Item Name</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g., Margherita Pizza"
+                    value={menuItem.name}
+                    onChange={(e) => setMenuItem({ ...menuItem, name: e.target.value })}
+                    className="input input-bordered w-full focus:outline-none"
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="label">
+                      <span className="label-text">Price</span>
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="0.00"
+                      step="0.01"
+                      min="0"
+                      value={menuItem.price}
+                      onChange={(e) => setMenuItem({ ...menuItem, price: e.target.value })}
+                      className="input input-bordered w-full focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="label">
+                      <span className="label-text">Description</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Optional description"
+                      value={menuItem.description}
+                      onChange={(e) => setMenuItem({ ...menuItem, description: e.target.value })}
+                      className="input input-bordered w-full focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <button type="submit" className="btn btn-success w-full">
+                  Add Menu Item
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* Menu List */}
+          <div className="space-y-3">
+            {!restaurant.menu || restaurant.menu.length === 0 ? (
+              <div className="alert alert-info">
+                <span>No menu items yet. Add one to get started!</span>
+              </div>
+            ) : (
+              restaurant.menu.map((item, index) => (
+                <div key={index} className="bg-base-200 p-4 rounded-lg">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h4 className="font-bold text-lg">{item.name}</h4>
+                      {item.description && (
+                        <p className="text-sm text-gray-600">{item.description}</p>
+                      )}
+                    </div>
+                    <div className="text-xl font-bold text-primary ml-4">
+                      ${parseFloat(item.price || 0).toFixed(2)}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default RestaurantDashboardWindow;
