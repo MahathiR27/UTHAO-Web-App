@@ -28,6 +28,16 @@ const restaurantDetailsSchema = new mongoose.Schema(
         },
         OwnerPhone: {
             type: String
+        },
+        menu: {
+            type: [
+                {
+                    name: { type: String },
+                    price: { type: Number },
+                    description: { type: String }
+                }
+            ],
+            default: []
         }
 
     }
