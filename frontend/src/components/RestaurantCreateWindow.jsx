@@ -6,6 +6,8 @@ import { useNavigate } from "react-router";
 const RestaurantCreateWindow = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
+    username: "",
+    password: "",
     RestaurantName: "",
     OwnerName: "",
     description: "",
@@ -35,6 +37,8 @@ const RestaurantCreateWindow = () => {
       console.log(res.data);
 
       setFormData({
+        username: "",
+        password: "",
         RestaurantName: "",
         OwnerName: "",
         description: "",
@@ -64,6 +68,35 @@ const RestaurantCreateWindow = () => {
         </h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="card bg-base-200 p-4 rounded-lg">
+            <h3 className="font-semibold mb-3">Account</h3>
+            <div className="grid grid-cols-1 gap-3">
+              <div>
+                <label className="label"><span className="label-text">Username</span></label>
+                <input
+                  type="text"
+                  name="username"
+                  placeholder="Choose a username"
+                  value={formData.username}
+                  onChange={handleChange}
+                  className="input input-bordered w-full focus:outline-none"
+                  required
+                />
+              </div>
+              <div>
+                <label className="label"><span className="label-text">Password</span></label>
+                <input
+                  type="password"
+                  name="password"
+                  placeholder="Set a password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  className="input input-bordered w-full focus:outline-none"
+                  required
+                />
+              </div>
+            </div>
+          </div>
           <div>
             <label className="label">
               <span className="label-text">Restaurant Name</span>
