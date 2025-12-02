@@ -21,6 +21,11 @@ const userDetailsSchema = new mongoose.Schema(
         },
         address: {
             type: String
+        },
+        refId: {
+            type: String,
+            unique: true,
+            sparse: true
         }
 
     }
