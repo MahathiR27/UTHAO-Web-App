@@ -29,7 +29,7 @@ const restaurantDetailsSchema = new mongoose.Schema(
         OwnerPhone: {
             type: String
         },
-        username: {
+        UserName: {
             type: String,
             required: true,
             unique: true

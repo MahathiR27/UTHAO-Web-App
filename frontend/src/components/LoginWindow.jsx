@@ -30,11 +30,16 @@ const LoginWindow = () => {
       // Store token in localStorage
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("user", JSON.stringify(res.data.user));
+      localStorage.setItem("userType", res.data.userType);
 
       toast.success(res.data.message);
 
-      // Navigate to profile page with user ID
-      navigate(`/profile/${res.data.user.id}`);
+      // Navigate based on user type
+      if (res.data.userType === "user") {
+        navigate(`/profile/${res.data.user.id}`);
+      } else if (res.data.userType === "restaurant") {
+        navigate(`/restaurant-dashboard`);
+      }
 
     } catch (err) {
       toast.error(err.response?.data?.message || "Login failed");
