@@ -1,8 +1,10 @@
 import dashboardRoutes from "./routes/dashboardRoutes.js"
+import restaurantRoutes from "./routes/restaurantRoutes.js"
 import express from "express";
 import { connectDB } from "./config/db.js";
 import dotenv from "dotenv";
 import signupRoutes from "./routes/signupRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
 import cors from "cors";
 
 dotenv.config(); // Initializing the .env naile you cant access anything from that file
@@ -14,6 +16,8 @@ app.use(express.json()); //Give access to req.body; Middleware - used for auth c
 
 //-------------------------------APIs------------------------------------
 app.use("/api/signup", signupRoutes);
+app.use("/api/user", userRoutes);
+app.use("/api/restaurant", restaurantRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 
 connectDB().then(() => {
