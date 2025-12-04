@@ -3,15 +3,15 @@ import Restaurant from "../modules/restaurantReg.js";
 export const  createRestaurant = async (req, res) => {
     try {
         
-        const { RestaurantName, OwnerName, description, address, email, RestaurantPhone, OwnerPhone, username, password } = req.body;
+        const { RestaurantName, OwnerName, description, address, email, RestaurantPhone, OwnerPhone, UserName, password } = req.body;
 
-        if (!RestaurantName || !OwnerName || !address || !email || !RestaurantPhone || !username || !password) {
-            return res.status(400).json({message: "All fields are required (including username and password)"});
+        if (!RestaurantName || !OwnerName || !address || !email || !RestaurantPhone || !UserName || !password) {
+            return res.status(400).json({message: "All fields are required (including UserName and password)"});
         }
 
         const newRestaurant = new Restaurant(
             {
-                RestaurantName, OwnerName, description, address, email, RestaurantPhone, OwnerPhone, username, password
+                RestaurantName, OwnerName, description, address, email, RestaurantPhone, OwnerPhone, UserName, password
             }
         );
         

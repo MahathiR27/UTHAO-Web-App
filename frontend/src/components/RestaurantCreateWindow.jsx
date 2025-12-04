@@ -6,7 +6,7 @@ import { useNavigate } from "react-router";
 const RestaurantCreateWindow = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    username: "",
+    UserName: "",
     password: "",
     RestaurantName: "",
     OwnerName: "",
@@ -45,7 +45,7 @@ const RestaurantCreateWindow = () => {
 
       // reset form then navigate to dashboard for created restaurant
       setFormData({
-        username: "",
+        UserName: "",
         password: "",
         RestaurantName: "",
         OwnerName: "",
@@ -80,9 +80,9 @@ const RestaurantCreateWindow = () => {
                 <label className="label"><span className="label-text">Username</span></label>
                 <input
                   type="text"
-                  name="username"
+                  name="UserName"
                   placeholder="Choose a username"
-                  value={formData.username}
+                  value={formData.UserName}
                   onChange={handleChange}
                   className="input input-bordered w-full focus:outline-none"
                   required
