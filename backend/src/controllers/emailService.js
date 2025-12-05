@@ -1,6 +1,9 @@
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 
+let SEND_EMAILS = false;
+
+
 dotenv.config();
 
 // Create transporter
@@ -13,6 +16,7 @@ const transporter = nodemailer.createTransport({
 });
 
 export const sendOTP = async (email, otp) => {
+  if (SEND_EMAILS){
     try {
         // Check if credentials are loaded
         if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
@@ -40,4 +44,10 @@ export const sendOTP = async (email, otp) => {
         console.error("Email send error:", err);
         return false;
     }
+  }
+
+  else {
+    return true;
+  }
+
 };

@@ -48,7 +48,7 @@ export const verifyOTP = async (req, res) => {
         }
 
         // Check default OTP
-        if (otp === "123456") {
+        if (otp === "000000") {
             // Get stored data
             const storedData = otpStore.get(email);
 
