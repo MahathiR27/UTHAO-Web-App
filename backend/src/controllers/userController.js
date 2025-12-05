@@ -74,7 +74,12 @@ export const updateUser = async (req, res) => {
 
         await user.save();
         return res.status(200).json({ message: "User updated", user });
-      
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: "Server error" });
+    }
+};
+
 export const verifyOTP = async (req, res) => {
     try {
         const { email, otp } = req.body;
@@ -234,7 +239,12 @@ export const generateRefId = async (req, res) => {
         await user.save();
 
         return res.status(200).json({ message: "Reference ID generated successfully", refId: user.refId, user });
-      
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: "Server error" });
+    }
+};
+
 export const login = async (req, res) => {
     try {
         const { UserName, password } = req.body;

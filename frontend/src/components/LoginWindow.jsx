@@ -66,7 +66,7 @@ const LoginWindow = () => {
 
       // Navigate based on user type
       if (res.data.userType === "user") {
-        navigate(`/profile?id=${res.data.user.id}`);
+        navigate(`/user-dashboard?id=${res.data.user.id}`);
       } else if (res.data.userType === "restaurant") {
         navigate(`/restaurant-dashboard?id=${res.data.user.id}`);
       }

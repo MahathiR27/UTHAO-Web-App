@@ -7,7 +7,6 @@ import RestaurantCreatePage from "./pages/RestaurantCreatePage";
 import RestaurantDashboardPage from "./pages/RestaurantDashboardPage";
 import SignupPage from "./pages/SignupPage";
 import UserCreatePage from "./pages/UserCreatePage";
-import UserDashboardPage from "./pages/UserDashboardPage";
 
 const App = () => {
   return (
@@ -15,12 +14,10 @@ const App = () => {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
-        <Route path="/profile/:id" element={<ProfilePage />} />{" "}
-        {/* :id will be able to change dynamically for different profiles */}
+        <Route path="/user-dashboard" element={<ProfilePage />} />{" "}
         <Route path="/create-restaurant" element={<RestaurantCreatePage />} />
         <Route path="/restaurant-dashboard" element={<RestaurantDashboardPage />} />
         <Route path="/create-user" element={<UserCreatePage />} />
-        <Route path="/user-dashboard" element={<UserDashboardPage />} />
       </Routes>
     </div>
   );
