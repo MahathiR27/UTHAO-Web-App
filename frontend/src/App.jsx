@@ -7,6 +7,7 @@ import RestaurantCreatePage from "./pages/RestaurantCreatePage";
 import RestaurantDashboardPage from "./pages/RestaurantDashboardPage";
 import SignupPage from "./pages/SignupPage";
 import UserCreatePage from "./pages/UserCreatePage";
+import MenuBrowserPage from "./pages/MenuBrowserPage";
 
 const App = () => {
   return (
@@ -18,6 +19,7 @@ const App = () => {
         <Route path="/create-restaurant" element={<RestaurantCreatePage />} />
         <Route path="/restaurant-dashboard" element={<RestaurantDashboardPage />} />
         <Route path="/create-user" element={<UserCreatePage />} />
+        <Route path="/menu-browser" element={<MenuBrowserPage />} />
       </Routes>
     </div>
   );

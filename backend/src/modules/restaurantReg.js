@@ -43,7 +43,8 @@ const restaurantDetailsSchema = new mongoose.Schema(
                 {
                     name: { type: String },
                     price: { type: Number },
-                    description: { type: String }
+                    description: { type: String },
+                    image: { type: String }
                 }
             ],
             default: []
