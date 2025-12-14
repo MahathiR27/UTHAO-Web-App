@@ -1,7 +1,7 @@
 import express from 'express';
 import { getRestaurant, addMenu, updateRestaurant, updateMenu } from '../controllers/restaurantController.js';
 import { getUser, updateUser, generateRefId } from '../controllers/userController.js';
-import { getAllMenuItems, getRestaurantMenuItems } from '../controllers/dashboardController.js';
+import { getRestaurantMenuItems } from '../controllers/dashboardController.js';
 
 const router = express.Router();
 

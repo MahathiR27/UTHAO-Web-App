@@ -200,6 +200,17 @@ const RestaurantDashboardWindow = () => {
                 <label className="label"><span className="label-text">Description</span></label>
                 <textarea name="description" value={profileForm.description || ""} onChange={handleProfileChange} className="textarea textarea-bordered w-full" />
               </div>
+              <div>
+                <label className="label"><span className="label-text">Reservation Limit</span></label>
+                <input
+                  name="reservationLimit"
+                  type="number"
+                  min="0"
+                  value={profileForm.reservationLimit || 0}
+                  onChange={handleProfileChange}
+                  className="input input-bordered w-full"
+                />
+              </div>
             </div>
             <div className="mt-3">
               <button type="submit" className="btn btn-primary">Save Profile</button>
@@ -232,19 +243,29 @@ const RestaurantDashboardWindow = () => {
                   <strong>Owner Phone:</strong> {restaurant.OwnerPhone}
                 </div>
               )}
+              <div>
+                <strong>Reservation Limit:</strong> {restaurant.reservationLimit || 0}
+              </div>
             </div>
           </div>
 
           {/* Right Column - Stats */}
           <div className="bg-base-200 p-4 rounded-lg flex flex-col justify-between">
             <div>
-              <h4 className="font-bold text-lg mb-3">Menu Statistics</h4>
+              <h4 className="font-bold text-lg mb-3">Restaurant Statistics</h4>
               <div className="stats shadow">
                 <div className="stat">
-                  <div className="stat-title">Total Items</div>
+                  <div className="stat-title">Menu Items</div>
                   <div className="stat-value text-primary">
                     {restaurant.menu ? restaurant.menu.length : 0}
                   </div>
+                </div>
+                <div className="stat">
+                  <div className="stat-title">Current Reservations</div>
+                  <div className="stat-value text-secondary">
+                    {restaurant.currentReservations || 0}
+                  </div>
+                  <div className="stat-desc">of {restaurant.reservationLimit || 0} limit</div>
                 </div>
               </div>
             </div>

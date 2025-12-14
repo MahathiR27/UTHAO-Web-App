@@ -38,6 +38,16 @@ const restaurantDetailsSchema = new mongoose.Schema(
             type: String,
             required: true
         },
+        reservationLimit: {
+            type: Number,
+            required: false,
+            default: 0
+        },
+        currentReservations: {
+            type: Number,
+            default: 0,
+            required: false
+        },
         menu: {
             type: [
                 {
