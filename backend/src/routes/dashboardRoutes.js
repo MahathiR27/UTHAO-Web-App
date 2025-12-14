@@ -17,7 +17,6 @@ router.put("/update-user/:id", updateUser);
 router.post("/generate-refid/:id", generateRefId);
 
 // Menu browser endpoints
-router.get("/get-all-menu-items", getAllMenuItems);
 router.get("/get-restaurant-menu/:restaurantId", getRestaurantMenuItems);
 
 export default router;
