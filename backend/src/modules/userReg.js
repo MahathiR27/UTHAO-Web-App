@@ -26,6 +26,20 @@ const userDetailsSchema = new mongoose.Schema(
             type: String,
             unique: true,
             sparse: true
+        },
+        reservations: {
+            type: [
+                {
+                    restaurantId: { type: mongoose.Schema.Types.ObjectId, ref: 'restaurantReg' },
+                    name: { type: String, required: true },
+                    address: { type: String, required: true },
+                    date: { type: Date, required: true },
+                    numberOfPeople: { type: Number, required: true },
+                    status: { type: String, enum: ['pending', 'confirmed', 'cancelled'], default: 'pending' },
+                    createdAt: { type: Date, default: Date.now }
+                }
+            ],
+            default: []
         }
 
     }

@@ -1,4 +1,5 @@
 import Restaurant from "../modules/restaurantReg.js";
+import User from "../modules/userReg.js";
 
 // Get menu items for a specific restaurant
 export const getRestaurantMenuItems = async (req, res) => {
@@ -26,6 +27,82 @@ export const getRestaurantMenuItems = async (req, res) => {
       restaurant,
       menuItems,
       count: menuItems.length,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Make a reservation
+export const makeReservation = async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    const { name, address, date, numberOfPeople, userId } = req.body;
+
+    if (!restaurantId) {
+      return res.status(400).json({ message: "Restaurant ID required" });
+    }
+
+    if (!name || !address || !date || !numberOfPeople || !userId) {
+      return res.status(400).json({ message: "All reservation fields are required" });
+    }
+
+    const peopleCount = parseInt(numberOfPeople);
+    if (peopleCount <= 0) {
+      return res.status(400).json({ message: "Number of people must be greater than 0" });
+    }
+
+    // Get restaurant
+    const restaurant = await Restaurant.findById(restaurantId);
+    if (!restaurant) {
+      return res.status(404).json({ message: "Restaurant not found" });
+    }
+
+    // Check reservation limit
+    const currentReservations = restaurant.reservations.filter(r => r.status === 'pending' || r.status === 'confirmed').length;
+    if (currentReservations + peopleCount > restaurant.reservationLimit) {
+      return res.status(400).json({ message: "Reservation limit exceeded for this restaurant" });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Create reservation object
+    const reservation = {
+      userId,
+      name,
+      address,
+      date: new Date(date),
+      numberOfPeople: peopleCount,
+      status: 'pending',
+      createdAt: new Date()
+    };
+
+    // Add to restaurant reservations
+    restaurant.reservations.push(reservation);
+    await restaurant.save();
+
+    // Add to user reservations
+    user.reservations.push({
+      restaurantId,
+      name,
+      address,
+      date: new Date(date),
+      numberOfPeople: peopleCount,
+      status: 'pending',
+      createdAt: new Date()
+    });
+    await user.save();
+
+    return res.status(201).json({
+      message: "Reservation created successfully",
+      reservation: {
+        id: restaurant.reservations[restaurant.reservations.length - 1]._id,
+        ...reservation
+      }
     });
   } catch (err) {
     console.error(err);

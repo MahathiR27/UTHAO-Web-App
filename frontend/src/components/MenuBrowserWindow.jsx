@@ -2,16 +2,24 @@ import { useEffect, useState } from "react";
 import { useLocation } from "react-router";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { ShoppingCart } from "lucide-react";
+import { ShoppingCart, Calendar } from "lucide-react";
 
 const MenuBrowserWindow = () => {
   const location = useLocation();
   const params = new URLSearchParams(location.search);
   const restaurantId = params.get("id");
+  const userId = params.get("uid");
 
   const [restaurant, setRestaurant] = useState(null);
   const [menuItems, setMenuItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showReservationModal, setShowReservationModal] = useState(false);
+  const [reservationForm, setReservationForm] = useState({
+    name: "",
+    address: "",
+    date: "",
+    numberOfPeople: ""
+  });
 
   // Fetch restaurant menu items on mount
   useEffect(() => {
@@ -43,11 +51,70 @@ const MenuBrowserWindow = () => {
     // TODO: Implement actual order functionality
   };
 
-  const closeModal = () => {
-    setShowRestaurantModal(false);
-    setSelectedRestaurant(null);
-    setRestaurantDetails(null);
-    setRestaurantMenuItems([]);
+  const handleReservationChange = (e) => {
+    const { name, value } = e.target;
+    setReservationForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleMakeReservation = async (e) => {
+    e.preventDefault();
+
+    if (!userId) {
+      toast.error("User authentication required");
+      return;
+    }
+
+    // Basic validation
+    if (!reservationForm.name || !reservationForm.address || !reservationForm.date || !reservationForm.numberOfPeople) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+
+    const peopleCount = parseInt(reservationForm.numberOfPeople);
+    if (peopleCount <= 0) {
+      toast.error("Number of people must be greater than 0");
+      return;
+    }
+
+    try {
+      const response = await axios.post(
+        `http://localhost:5001/api/dashboard/make-reservation/${restaurantId}`,
+        {
+          ...reservationForm,
+          userId
+        }
+      );
+
+      toast.success("Reservation request submitted successfully!");
+      setShowReservationModal(false);
+      setReservationForm({
+        name: "",
+        address: "",
+        date: "",
+        numberOfPeople: ""
+      });
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to make reservation");
+      console.error(error);
+    }
+  };
+
+  const openReservationModal = () => {
+    if (!userId) {
+      toast.error("User authentication required. Please log in again.");
+      return;
+    }
+    setShowReservationModal(true);
+  };
+
+  const closeReservationModal = () => {
+    setShowReservationModal(false);
+    setReservationForm({
+      name: "",
+      address: "",
+      date: "",
+      numberOfPeople: ""
+    });
   };
 
   if (loading) {
@@ -91,6 +158,15 @@ const MenuBrowserWindow = () => {
               {restaurant.description && (
                 <p className="mt-4 text-gray-600">{restaurant.description}</p>
               )}
+              <div className="mt-4">
+                <button
+                  onClick={openReservationModal}
+                  className="btn btn-secondary gap-2"
+                >
+                  <Calendar size={16} />
+                  Make Reservation
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -140,6 +216,85 @@ const MenuBrowserWindow = () => {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Reservation Modal */}
+      {showReservationModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="modal modal-open">
+            <div className="modal-box w-full max-w-md">
+              <h3 className="font-bold text-lg mb-4">Make a Reservation</h3>
+              <form onSubmit={handleMakeReservation}>
+                <div className="form-control mb-4">
+                  <label className="label">
+                    <span className="label-text">Name</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="name"
+                    value={reservationForm.name}
+                    onChange={handleReservationChange}
+                    className="input input-bordered"
+                    required
+                  />
+                </div>
+                <div className="form-control mb-4">
+                  <label className="label">
+                    <span className="label-text">Address</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="address"
+                    value={reservationForm.address}
+                    onChange={handleReservationChange}
+                    className="input input-bordered"
+                    required
+                  />
+                </div>
+                <div className="form-control mb-4">
+                  <label className="label">
+                    <span className="label-text">Date</span>
+                  </label>
+                  <input
+                    type="date"
+                    name="date"
+                    value={reservationForm.date}
+                    onChange={handleReservationChange}
+                    className="input input-bordered"
+                    min={new Date().toISOString().split('T')[0]}
+                    required
+                  />
+                </div>
+                <div className="form-control mb-6">
+                  <label className="label">
+                    <span className="label-text">Number of People</span>
+                  </label>
+                  <input
+                    type="number"
+                    name="numberOfPeople"
+                    value={reservationForm.numberOfPeople}
+                    onChange={handleReservationChange}
+                    className="input input-bordered"
+                    min="1"
+                    required
+                  />
+                </div>
+                <div className="modal-action">
+                  <button
+                    type="button"
+                    onClick={closeReservationModal}
+                    className="btn btn-ghost"
+                  >
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn btn-primary">
+                    Submit Reservation
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
         </div>
       )}
     </div>

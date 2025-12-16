@@ -1,7 +1,7 @@
 import express from 'express';
 import { getRestaurant, addMenu, updateRestaurant, updateMenu } from '../controllers/restaurantController.js';
 import { getUser, updateUser, generateRefId } from '../controllers/userController.js';
-import { getRestaurantMenuItems } from '../controllers/dashboardController.js';
+import { getRestaurantMenuItems, makeReservation } from '../controllers/dashboardController.js';
 
 const router = express.Router();
 
@@ -18,5 +18,6 @@ router.post("/generate-refid/:id", generateRefId);
 
 // Menu browser endpoints
 router.get("/get-restaurant-menu/:restaurantId", getRestaurantMenuItems);
+router.post("/make-reservation/:restaurantId", makeReservation);
 
 export default router;
