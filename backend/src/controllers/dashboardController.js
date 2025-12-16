@@ -109,3 +109,63 @@ export const makeReservation = async (req, res) => {
     return res.status(500).json({ message: "Server error" });
   }
 };
+
+// Update reservation status
+export const updateReservationStatus = async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    const { reservationId, status } = req.body;
+
+    if (!restaurantId) {
+      return res.status(400).json({ message: "Restaurant ID required" });
+    }
+
+    if (!reservationId || !status) {
+      return res.status(400).json({ message: "Reservation ID and status are required" });
+    }
+
+    if (!['pending', 'confirmed', 'cancelled'].includes(status)) {
+      return res.status(400).json({ message: "Invalid status. Must be pending, confirmed, or cancelled" });
+    }
+
+    // Get restaurant
+    const restaurant = await Restaurant.findById(restaurantId);
+    if (!restaurant) {
+      return res.status(404).json({ message: "Restaurant not found" });
+    }
+
+    // Find and update reservation in restaurant
+    const reservationIndex = restaurant.reservations.findIndex(r => r._id.toString() === reservationId);
+    if (reservationIndex === -1) {
+      return res.status(404).json({ message: "Reservation not found" });
+    }
+
+    const oldStatus = restaurant.reservations[reservationIndex].status;
+    restaurant.reservations[reservationIndex].status = status;
+    await restaurant.save();
+
+    // Update reservation in user document
+    const userId = restaurant.reservations[reservationIndex].userId;
+    const user = await User.findById(userId);
+    if (user) {
+      const userReservationIndex = user.reservations.findIndex(r => 
+        r.restaurantId.toString() === restaurantId && 
+        r.date.toISOString() === restaurant.reservations[reservationIndex].date.toISOString() &&
+        r.name === restaurant.reservations[reservationIndex].name
+      );
+      
+      if (userReservationIndex !== -1) {
+        user.reservations[userReservationIndex].status = status;
+        await user.save();
+      }
+    }
+
+    return res.status(200).json({
+      message: "Reservation status updated successfully",
+      restaurant
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+};

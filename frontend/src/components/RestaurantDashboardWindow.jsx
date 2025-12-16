@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation } from "react-router";
 import axios from "axios";
 import toast from "react-hot-toast";
+import { Calendar, Check, X } from "lucide-react";
 
 const RestaurantDashboardWindow = () => {
   const location = useLocation();
@@ -16,6 +17,9 @@ const RestaurantDashboardWindow = () => {
   const [profileForm, setProfileForm] = useState(null);
   const [editingIndex, setEditingIndex] = useState(null);
   const [editMenuForm, setEditMenuForm] = useState({ name: "", price: "", description: "" });
+  const [reservationFilter, setReservationFilter] = useState("all"); // "all", "pending", "confirmed"
+  const [selectedReservation, setSelectedReservation] = useState(null);
+  const [showReservationModal, setShowReservationModal] = useState(false);
 
   // Fetch restaurant data on mount
   useEffect(() => {
@@ -129,6 +133,44 @@ const RestaurantDashboardWindow = () => {
       toast.error(err.response?.data?.message || "Failed to update menu");
       console.error(err);
     }
+  };
+
+  const handleReservationStatusUpdate = async (reservationId, newStatus) => {
+    try {
+      const response = await axios.put(
+        `http://localhost:5001/api/dashboard/update-reservation-status/${restaurantId}`,
+        {
+          reservationId,
+          status: newStatus
+        }
+      );
+
+      // Update local restaurant state
+      setRestaurant(response.data.restaurant);
+      setShowReservationModal(false);
+      setSelectedReservation(null);
+      toast.success(`Reservation ${newStatus} successfully`);
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to update reservation status");
+      console.error(error);
+    }
+  };
+
+  const openReservationModal = (reservation) => {
+    setSelectedReservation(reservation);
+    setShowReservationModal(true);
+  };
+
+  const closeReservationModal = () => {
+    setShowReservationModal(false);
+    setSelectedReservation(null);
+  };
+
+  const getFilteredReservations = () => {
+    if (!restaurant?.reservations) return [];
+
+    if (reservationFilter === "all") return restaurant.reservations;
+    return restaurant.reservations.filter(r => r.status === reservationFilter);
   };
 
   if (loading) {
@@ -263,7 +305,8 @@ const RestaurantDashboardWindow = () => {
                 <div className="stat">
                   <div className="stat-title">Current Reservations</div>
                   <div className="stat-value text-secondary">
-                    {restaurant.currentReservations || 0}
+                    {restaurant.reservations?.filter(r => r.status === 'pending' || r.status === 'confirmed')
+                      .reduce((total, r) => total + r.numberOfPeople, 0) || 0}
                   </div>
                   <div className="stat-desc">of {restaurant.reservationLimit || 0} limit</div>
                 </div>
@@ -389,6 +432,128 @@ const RestaurantDashboardWindow = () => {
             )}
           </div>
         </div>
+
+        {/* Reservations Section */}
+        <div className="divider"></div>
+
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-bold">Reservations</h3>
+            <div className="flex gap-2">
+              <select
+                value={reservationFilter}
+                onChange={(e) => setReservationFilter(e.target.value)}
+                className="select select-bordered select-sm"
+              >
+                <option value="all">All Reservations</option>
+                <option value="pending">Pending</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="card bg-base-200 max-h-96 overflow-y-auto">
+            <div className="card-body p-4">
+              {getFilteredReservations().length === 0 ? (
+                <p className="text-center text-gray-500 py-8">
+                  No {reservationFilter === "all" ? "" : reservationFilter} reservations
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {getFilteredReservations().map((reservation, index) => (
+                    <div
+                      key={reservation._id || index}
+                      className="bg-base-100 p-4 rounded-lg cursor-pointer hover:bg-base-300 transition-colors"
+                      onClick={() => openReservationModal(reservation)}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <h4 className="font-bold">{reservation.name}</h4>
+                          <p className="text-sm text-gray-600">
+                            {reservation.numberOfPeople} people • {new Date(reservation.date).toLocaleDateString()}
+                          </p>
+                          <p className="text-sm">{reservation.address}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`badge ${
+                            reservation.status === 'pending' ? 'badge-warning' :
+                            reservation.status === 'confirmed' ? 'badge-success' :
+                            'badge-error'
+                          }`}>
+                            {reservation.status}
+                          </span>
+                          <Calendar size={16} />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Reservation Details Modal */}
+        {showReservationModal && selectedReservation && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="modal modal-open">
+              <div className="modal-box w-full max-w-md">
+                <h3 className="font-bold text-lg mb-4">Reservation Details</h3>
+                <div className="space-y-3">
+                  <div>
+                    <strong>Name:</strong> {selectedReservation.name}
+                  </div>
+                  <div>
+                    <strong>Address:</strong> {selectedReservation.address}
+                  </div>
+                  <div>
+                    <strong>Date:</strong> {new Date(selectedReservation.date).toLocaleDateString()}
+                  </div>
+                  <div>
+                    <strong>Number of People:</strong> {selectedReservation.numberOfPeople}
+                  </div>
+                  <div>
+                    <strong>Status:</strong>{" "}
+                    <span className={`badge ${
+                      selectedReservation.status === 'pending' ? 'badge-warning' :
+                      selectedReservation.status === 'confirmed' ? 'badge-success' :
+                      'badge-error'
+                    }`}>
+                      {selectedReservation.status}
+                    </span>
+                  </div>
+                  <div>
+                    <strong>Created:</strong> {new Date(selectedReservation.createdAt).toLocaleString()}
+                  </div>
+                </div>
+                <div className="modal-action">
+                  {selectedReservation.status === 'pending' && (
+                    <>
+                      <button
+                        onClick={() => handleReservationStatusUpdate(selectedReservation._id, 'confirmed')}
+                        className="btn btn-success gap-2"
+                      >
+                        <Check size={16} />
+                        Accept
+                      </button>
+                      <button
+                        onClick={() => handleReservationStatusUpdate(selectedReservation._id, 'cancelled')}
+                        className="btn btn-error gap-2"
+                      >
+                        <X size={16} />
+                        Cancel
+                      </button>
+                    </>
+                  )}
+                  <button onClick={closeReservationModal} className="btn btn-ghost">
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

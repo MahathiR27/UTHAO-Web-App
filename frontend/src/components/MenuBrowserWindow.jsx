@@ -158,10 +158,48 @@ const MenuBrowserWindow = () => {
               {restaurant.description && (
                 <p className="mt-4 text-gray-600">{restaurant.description}</p>
               )}
-              <div className="mt-4">
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reservation Card */}
+      {restaurant && (
+        <div className="max-w-7xl mx-auto mb-8">
+          <div className="card bg-base-100 shadow-lg">
+            <div className="card-body">
+              <h3 className="card-title text-xl">Make a Reservation</h3>
+              <div className="mb-4">
+                {restaurant.reservationLimit === 0 ? (
+                  <p className="text-red-600 font-semibold">Cannot reserve - No reservation limit set</p>
+                ) : (() => {
+                  const usedSeats = restaurant.reservations?.filter(r => r.status === 'pending' || r.status === 'confirmed')
+                    .reduce((total, r) => total + r.numberOfPeople, 0) || 0;
+                  const remainingSeats = restaurant.reservationLimit - usedSeats;
+                  return remainingSeats <= 0 ? (
+                    <p className="text-red-600 font-semibold">Cannot reserve - All seats are booked</p>
+                  ) : (
+                    <p className="text-green-600 font-semibold">
+                      {remainingSeats} seats remaining out of {restaurant.reservationLimit}
+                    </p>
+                  );
+                })()}
+              </div>
+              <div className="card-actions justify-end">
                 <button
                   onClick={openReservationModal}
-                  className="btn btn-secondary gap-2"
+                  className={`btn gap-2 ${
+                    restaurant.reservationLimit === 0 ||
+                    (restaurant.reservations?.filter(r => r.status === 'pending' || r.status === 'confirmed')
+                      .reduce((total, r) => total + r.numberOfPeople, 0) || 0) >= restaurant.reservationLimit
+                      ? 'btn-disabled'
+                      : 'btn-secondary'
+                  }`}
+                  disabled={
+                    restaurant.reservationLimit === 0 ||
+                    (restaurant.reservations?.filter(r => r.status === 'pending' || r.status === 'confirmed')
+                      .reduce((total, r) => total + r.numberOfPeople, 0) || 0) >= restaurant.reservationLimit
+                  }
                 >
                   <Calendar size={16} />
                   Make Reservation
