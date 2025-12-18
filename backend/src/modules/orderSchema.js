@@ -12,7 +12,7 @@ const orderSchema = new mongoose.Schema({
         required: true
     },
     menuItemId: {
-        type: mongoose.Schema.Types.ObjectId,
+        type: String,
         required: true
     },
     price: {

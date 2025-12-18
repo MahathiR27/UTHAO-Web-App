@@ -72,6 +72,20 @@ const restaurantDetailsSchema = new mongoose.Schema(
                 }
             ],
             default: []
+        },
+        orders: {
+            type: [
+                {
+                    orderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Order' },
+                    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'userReg' },
+                    menuItemId: { type: String },
+                    date: { type: Date, required: true },
+                    price: { type: Number, required: true },
+                    deliveryAddress: { type: String, required: true },
+                    status: { type: String, enum: ['pending', 'confirmed', 'preparing', 'delivering', 'delivered', 'cancelled'], default: 'pending' },
+                }
+            ],
+            default: []
         }
 
     }

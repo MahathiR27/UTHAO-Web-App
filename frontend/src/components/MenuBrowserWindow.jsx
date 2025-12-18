@@ -14,11 +14,16 @@ const MenuBrowserWindow = () => {
   const [menuItems, setMenuItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showReservationModal, setShowReservationModal] = useState(false);
+  const [showOrderModal, setShowOrderModal] = useState(false);
+  const [selectedMenuItem, setSelectedMenuItem] = useState(null);
   const [reservationForm, setReservationForm] = useState({
     name: "",
     address: "",
     date: "",
     numberOfPeople: ""
+  });
+  const [orderForm, setOrderForm] = useState({
+    deliveryAddress: ""
   });
 
   // Fetch restaurant menu items on mount
@@ -47,8 +52,8 @@ const MenuBrowserWindow = () => {
   }, [restaurantId]);
 
   const handleOrder = (menuItem) => {
-    toast.success(`Added "${menuItem.name}" to cart (placeholder)`);
-    // TODO: Implement actual order functionality
+    setSelectedMenuItem(menuItem);
+    setShowOrderModal(true);
   };
 
   const handleReservationChange = (e) => {
@@ -115,6 +120,55 @@ const MenuBrowserWindow = () => {
       date: "",
       numberOfPeople: ""
     });
+  };
+
+  const handleOrderChange = (e) => {
+    const { name, value } = e.target;
+    setOrderForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleMakeOrder = async (e) => {
+    e.preventDefault();
+
+    if (!orderForm.deliveryAddress.trim()) {
+      toast.error("Please enter a delivery address");
+      return;
+    }
+
+    if (!userId) {
+      toast.error("User ID is required. Please log in again.");
+      return;
+    }
+
+    try {
+      const orderData = {
+        userId: userId,
+        restaurantId: restaurantId,
+        menuItemId: selectedMenuItem._id || selectedMenuItem.id,
+        price: selectedMenuItem.price || 0,
+        deliveryAddress: orderForm.deliveryAddress,
+        status: 'pending'
+      };
+
+      const response = await axios.post(
+        `http://localhost:5001/api/dashboard/make-order`,
+        orderData
+      );
+
+      toast.success("Order placed successfully!");
+      setShowOrderModal(false);
+      setOrderForm({ deliveryAddress: "" });
+      setSelectedMenuItem(null);
+    } catch (error) {
+      console.error("Order error:", error);
+      toast.error(error.response?.data?.message || "Failed to place order");
+    }
+  };
+
+  const closeOrderModal = () => {
+    setShowOrderModal(false);
+    setOrderForm({ deliveryAddress: "" });
+    setSelectedMenuItem(null);
   };
 
   if (loading) {
@@ -328,6 +382,54 @@ const MenuBrowserWindow = () => {
                   </button>
                   <button type="submit" className="btn btn-primary">
                     Submit Reservation
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Order Modal */}
+      {showOrderModal && selectedMenuItem && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="modal modal-open">
+            <div className="modal-box w-full max-w-md">
+              <h3 className="font-bold text-lg mb-4">Place Order</h3>
+
+              <div className="mb-4 p-3 bg-base-200 rounded-lg">
+                <h4 className="font-semibold">{selectedMenuItem.name}</h4>
+                <p className="text-sm text-gray-600">{selectedMenuItem.description}</p>
+                <p className="text-lg font-bold text-primary mt-2">
+                  ${selectedMenuItem.price || "N/A"}
+                </p>
+              </div>
+
+              <form onSubmit={handleMakeOrder}>
+                <div className="form-control mb-4">
+                  <label className="label">
+                    <span className="label-text">Delivery Address</span>
+                  </label>
+                  <textarea
+                    name="deliveryAddress"
+                    value={orderForm.deliveryAddress}
+                    onChange={handleOrderChange}
+                    placeholder="Enter your full delivery address"
+                    className="textarea textarea-bordered h-20"
+                    required
+                  />
+                </div>
+
+                <div className="modal-action">
+                  <button
+                    type="button"
+                    onClick={closeOrderModal}
+                    className="btn btn-ghost"
+                  >
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn btn-primary">
+                    Place Order
                   </button>
                 </div>
               </form>

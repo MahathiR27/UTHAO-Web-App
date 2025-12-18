@@ -1,5 +1,6 @@
 import Restaurant from "../modules/restaurantReg.js";
 import User from "../modules/userReg.js";
+import Order from "../modules/orderSchema.js";
 
 // Get menu items for a specific restaurant
 export const getRestaurantMenuItems = async (req, res) => {
@@ -163,6 +164,75 @@ export const updateReservationStatus = async (req, res) => {
     return res.status(200).json({
       message: "Reservation status updated successfully",
       restaurant
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Make an order
+export const makeOrder = async (req, res) => {
+  try {
+    const { userId, restaurantId, menuItemId, price, deliveryAddress } = req.body;
+
+    if (!userId || !restaurantId || !menuItemId || !price || !deliveryAddress) {
+      return res.status(400).json({ message: "All order fields are required" });
+    }
+
+    // Verify user exists
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Verify restaurant exists
+    const restaurant = await Restaurant.findById(restaurantId);
+    if (!restaurant) {
+      return res.status(404).json({ message: "Restaurant not found" });
+    }
+
+    // Create the order
+    const newOrder = new Order({
+      userId,
+      restaurantId,
+      menuItemId,
+      price,
+      deliveryAddress,
+      status: 'pending'
+    });
+
+    const savedOrder = await newOrder.save();
+
+    // Add order to user's orders array
+    user.orders.push({
+      orderId: savedOrder._id,
+      restaurantId,
+      menuItemId,
+      date: savedOrder.createdAt,
+      price,
+      deliveryAddress,
+      status: 'pending'
+    });
+
+    await user.save();
+
+    // Add order to restaurant's orders array
+    restaurant.orders.push({
+      orderId: savedOrder._id,
+      userId,
+      menuItemId,
+      date: savedOrder.createdAt,
+      price,
+      deliveryAddress,
+      status: 'pending'
+    });
+
+    await restaurant.save();
+
+    return res.status(201).json({
+      message: "Order placed successfully",
+      order: savedOrder
     });
   } catch (err) {
     console.error(err);

@@ -1,7 +1,7 @@
 import express from 'express';
 import { getRestaurant, addMenu, updateRestaurant, updateMenu } from '../controllers/restaurantController.js';
 import { getUser, updateUser, generateRefId } from '../controllers/userController.js';
-import { getRestaurantMenuItems, makeReservation, updateReservationStatus } from '../controllers/dashboardController.js';
+import { getRestaurantMenuItems, makeReservation, updateReservationStatus, makeOrder } from '../controllers/dashboardController.js';
 
 const router = express.Router();
 
@@ -20,5 +20,6 @@ router.post("/generate-refid/:id", generateRefId);
 router.get("/get-restaurant-menu/:restaurantId", getRestaurantMenuItems);
 router.post("/make-reservation/:restaurantId", makeReservation);
 router.put("/update-reservation-status/:restaurantId", updateReservationStatus);
+router.post("/make-order", makeOrder);
 
 export default router;
