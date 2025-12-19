@@ -1,8 +1,17 @@
-// Simple JWT token utilities
+// Simple authentication utilities
+
+// Get token
+export const getToken = () => localStorage.getItem('token');
+
+// Save token
+export const setToken = (token) => localStorage.setItem('token', token);
+
+// Remove token (logout)
+export const removeToken = () => localStorage.removeItem('token');
 
 // Get user data from token
 export const getUser = () => {
-  const token = localStorage.getItem('token');
+  const token = getToken();
   if (!token) return null;
   
   try {
@@ -16,7 +25,6 @@ export const getUser = () => {
 // Get auth headers for API calls
 export const getAuthHeaders = () => {
   return {
-    'Authorization': `Bearer ${localStorage.getItem('token')}`,
-    'Content-Type': 'application/json'
+    'Authorization': getToken()
   };
 };

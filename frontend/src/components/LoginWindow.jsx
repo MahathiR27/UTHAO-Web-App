@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import axios from "axios";
 import toast from "react-hot-toast";
+import { setToken, getUser } from "../utils/authUtils";
 
 const LoginWindow = () => {
   const [formData, setFormData] = useState({
@@ -14,6 +15,18 @@ const LoginWindow = () => {
   const [userEmail, setUserEmail] = useState("");
 
   const navigate = useNavigate();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    const user = getUser();
+    if (user) {
+      if (user.userType === "user") {
+        navigate("/user-dashboard");
+      } else if (user.userType === "restaurant") {
+        navigate("/restaurant-dashboard");
+      }
+    }
+  }, [navigate]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -58,18 +71,17 @@ const LoginWindow = () => {
       });
 
       // Store token
-      localStorage.setItem("token", res.data.token);
+      setToken(res.data.token);
 
-      // Decode token to get user data
-      const token = res.data.token;
-      const payload = JSON.parse(atob(token.split('.')[1]));
+      // Get user data from token
+      const user = getUser();
 
       toast.success(res.data.message);
 
       // Navigate based on user type
-      if (payload.userType === "user") {
+      if (user.userType === "user") {
         navigate("/user-dashboard");
-      } else if (payload.userType === "restaurant") {
+      } else if (user.userType === "restaurant") {
         navigate("/restaurant-dashboard");
       }
 

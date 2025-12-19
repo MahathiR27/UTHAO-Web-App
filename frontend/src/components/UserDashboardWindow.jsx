@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { X } from "lucide-react";
-import { getUser, getAuthHeaders } from "../utils/authUtils";
+import { getUser, getAuthHeaders, removeToken } from "../utils/authUtils";
 
 const UserDashboardWindow = () => {
   const navigate = useNavigate();
@@ -159,7 +159,7 @@ const UserDashboardWindow = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
+    removeToken();
     toast.success("Logged out successfully");
     navigate("/login");
   };
@@ -205,6 +205,12 @@ const UserDashboardWindow = () => {
               onClick={handleToggleEditProfile}
             >
               {editingProfile ? "Close" : "Edit Profile"}
+            </button>
+            <button
+              className="btn btn-sm btn-error"
+              onClick={handleLogout}
+            >
+              Logout
             </button>
           </div>
         </div>
