@@ -57,6 +57,21 @@ const MenuBrowserWindow = () => {
     setShowOrderModal(true);
   };
 
+  // Helper function to get applicable offer for a menu item
+  const getMenuItemOffer = (menuIndex) => {
+    if (!restaurant?.offers) return null;
+    
+    // Find the first offer that includes this menu item
+    return restaurant.offers.find(offer => 
+      offer.menuItemIndices && offer.menuItemIndices.includes(menuIndex)
+    );
+  };
+
+  // Helper function to calculate discounted price
+  const getDiscountedPrice = (originalPrice, percentage) => {
+    return originalPrice * (1 - percentage / 100);
+  };
+
   const handleReservationChange = (e) => {
     const { name, value } = e.target;
     setReservationForm(prev => ({ ...prev, [name]: value }));
@@ -273,7 +288,12 @@ const MenuBrowserWindow = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
-          {menuItems.map((item) => (
+          {menuItems.map((item, index) => {
+            const offer = getMenuItemOffer(index);
+            const originalPrice = item.price || 0;
+            const discountedPrice = offer ? getDiscountedPrice(originalPrice, offer.percentage) : null;
+            
+            return (
             <div key={item._id} className="card bg-base-100 shadow-lg hover:shadow-xl transition-shadow">
               {item.image && (
                 <figure className="h-48 overflow-hidden bg-gray-200">
@@ -291,10 +311,26 @@ const MenuBrowserWindow = () => {
                     {item.description}
                   </p>
                 )}
+                {offer && (
+                  <div className="badge badge-secondary gap-2">
+                    {offer.percentage}% OFF
+                  </div>
+                )}
                 <div className="flex justify-between items-center mt-4">
-                  <span className="text-xl font-bold text-primary">
-                    ${item.price || "N/A"}
-                  </span>
+                  {discountedPrice !== null ? (
+                    <div className="flex flex-col">
+                      <span className="text-sm text-gray-500 line-through">
+                        ${originalPrice.toFixed(2)}
+                      </span>
+                      <span className="text-2xl font-bold text-secondary">
+                        ${discountedPrice.toFixed(2)}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-xl font-bold text-primary">
+                      ${originalPrice.toFixed(2)}
+                    </span>
+                  )}
                 </div>
                 <div className="card-actions justify-end mt-4">
                   <button
@@ -307,7 +343,8 @@ const MenuBrowserWindow = () => {
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -391,7 +428,14 @@ const MenuBrowserWindow = () => {
       )}
 
       {/* Order Modal */}
-      {showOrderModal && selectedMenuItem && (
+      {showOrderModal && selectedMenuItem && (() => {
+        const menuIndex = menuItems.findIndex(item => item._id === selectedMenuItem._id);
+        const offer = getMenuItemOffer(menuIndex);
+        const originalPrice = selectedMenuItem.price || 0;
+        const discountedPrice = offer ? getDiscountedPrice(originalPrice, offer.percentage) : null;
+        const finalPrice = discountedPrice !== null ? discountedPrice : originalPrice;
+
+        return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="modal modal-open">
             <div className="modal-box w-full max-w-md">
@@ -400,9 +444,25 @@ const MenuBrowserWindow = () => {
               <div className="mb-4 p-3 bg-base-200 rounded-lg">
                 <h4 className="font-semibold">{selectedMenuItem.name}</h4>
                 <p className="text-sm text-gray-600">{selectedMenuItem.description}</p>
-                <p className="text-lg font-bold text-primary mt-2">
-                  ${selectedMenuItem.price || "N/A"}
-                </p>
+                {offer && (
+                  <div className="badge badge-secondary gap-2 mt-2">
+                    {offer.percentage}% OFF
+                  </div>
+                )}
+                {discountedPrice !== null ? (
+                  <div className="mt-2">
+                    <span className="text-sm text-gray-500 line-through mr-2">
+                      ${originalPrice.toFixed(2)}
+                    </span>
+                    <span className="text-2xl font-bold text-secondary">
+                      ${discountedPrice.toFixed(2)}
+                    </span>
+                  </div>
+                ) : (
+                  <p className="text-lg font-bold text-primary mt-2">
+                    ${originalPrice.toFixed(2)}
+                  </p>
+                )}
               </div>
 
               <form onSubmit={handleMakeOrder}>
@@ -436,7 +496,8 @@ const MenuBrowserWindow = () => {
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 };
