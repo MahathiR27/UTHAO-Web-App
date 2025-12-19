@@ -1,6 +1,6 @@
 import express from 'express';
 import { getRestaurant, addMenu, updateRestaurant, updateMenu } from '../controllers/restaurantController.js';
-import { getUser, updateUser, generateRefId, getUserCart, cancelOrder, confirmUserOrders } from '../controllers/userController.js';
+import { getUser, updateUser, generateRefId, getUserCart, cancelOrder, confirmUserOrders, getUserPromocodes, applyPromocode, validatePromocode } from '../controllers/userController.js';
 import { getRestaurantMenuItems, makeReservation, updateReservationStatus, makeOrder } from '../controllers/dashboardController.js';
 import { verifyToken } from '../middleware/authMiddleware.js';
 
@@ -27,5 +27,10 @@ router.post("/make-order", verifyToken, makeOrder);
 router.get("/get-user-cart", verifyToken, getUserCart);
 router.delete("/cancel-order/:orderId", verifyToken, cancelOrder);
 router.put("/confirm-user-orders", verifyToken, confirmUserOrders);
+
+// Promocode endpoints (protected)
+router.get("/get-promocodes", verifyToken, getUserPromocodes);
+router.post("/apply-promocode", verifyToken, applyPromocode);
+router.post("/validate-promocode", verifyToken, validatePromocode);
 
 export default router;

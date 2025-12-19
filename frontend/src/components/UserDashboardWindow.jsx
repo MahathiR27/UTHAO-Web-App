@@ -23,6 +23,36 @@ const UserDashboardWindow = () => {
   const [showCartModal, setShowCartModal] = useState(false);
   const [cartOrders, setCartOrders] = useState([]);
   const [cartLoading, setCartLoading] = useState(false);
+  const [promocodes, setPromocodes] = useState([]);
+  const [showPromocodeBanner, setShowPromocodeBanner] = useState(false);
+
+  // Function to fetch promocodes
+  const fetchPromocodes = async () => {
+    try {
+      const promoResponse = await axios({
+        method: 'get',
+        url: "http://localhost:5001/api/dashboard/get-promocodes",
+        headers: getAuthHeaders()
+      });
+      setPromocodes(promoResponse.data.promocodes || []);
+      // Show banner if user has available promocodes
+      if (promoResponse.data.availableCount > 0) {
+        setShowPromocodeBanner(true);
+      } else {
+        setShowPromocodeBanner(false);
+      }
+    } catch (promoError) {
+      // User might not have promocodes, that's ok
+      console.log("No promocodes found");
+    }
+  };
+
+  // Auto-hide banner when all promocodes are used
+  useEffect(() => {
+    if (promocodes.length > 0 && promocodes.filter(p => !p.used).length === 0) {
+      setShowPromocodeBanner(false);
+    }
+  }, [promocodes]);
 
   // Fetch user data on mount
   useEffect(() => {
@@ -40,6 +70,9 @@ const UserDashboardWindow = () => {
           headers: getAuthHeaders()
         });
         setUser(response.data.user);
+        
+        // Fetch promocodes
+        await fetchPromocodes();
       } catch (error) {
         toast.error("Failed to load user details");
         console.error(error);
@@ -214,6 +247,53 @@ const UserDashboardWindow = () => {
             </button>
           </div>
         </div>
+
+        {/* Promocode Banner */}
+        {showPromocodeBanner && promocodes.filter(p => !p.used).length > 0 && (
+          <div className="alert alert-info mb-4 relative">
+            <button
+              className="btn btn-ghost btn-sm absolute top-2 right-2"
+              onClick={() => setShowPromocodeBanner(false)}
+            >
+              <X size={18} />
+            </button>
+            <div>
+              <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div>
+                <h3 className="font-bold">
+                  {promocodes.filter(p => !p.used).length === 3 ? '🎉 Welcome to UTHAO!' : 
+                   promocodes.filter(p => !p.used).length === 2 ? '✨ Great Choice!' : 
+                   '🎊 Last Chance!'}
+                </h3>
+                <div className="text-sm">
+                  {promocodes.filter(p => !p.used).length === 3 ? (
+                    <>
+                      You have <strong>{promocodes.filter(p => !p.used).length} exclusive welcome promocodes</strong> waiting for you! 
+                      Thank you for joining us through a referral! 🌟
+                    </>
+                  ) : promocodes.filter(p => !p.used).length === 2 ? (
+                    <>
+                      You still have <strong>{promocodes.filter(p => !p.used).length} amazing promocodes</strong> left! 
+                      Continue saving up to <strong>{Math.max(...promocodes.filter(p => !p.used).map(p => p.discount))}%</strong> on your next orders. 
+                      Keep enjoying the benefits! 💫
+                    </>
+                  ) : (
+                    <>
+                      You have <strong>1 more special promocode</strong> remaining! 
+                      Don't miss out on your <strong>{promocodes.find(p => !p.used)?.discount}%</strong> discount. 
+                      Make it count! 🎁
+                    </>
+                  )}
+                  <div className="mt-1 text-xs opacity-80">
+                    📧 Your promocodes have been sent to your email. Check your inbox!
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Edit Profile Form */}
         {editingProfile && (
