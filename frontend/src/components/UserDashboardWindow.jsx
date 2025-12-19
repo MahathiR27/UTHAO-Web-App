@@ -1,18 +1,23 @@
 import { useEffect, useState } from "react";
-import { useLocation } from "react-router";
+import { useNavigate } from "react-router";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { X } from "lucide-react";
+import { getUser, getAuthHeaders } from "../utils/authUtils";
 
 const UserDashboardWindow = () => {
-  const location = useLocation();
-  const params = new URLSearchParams(location.search);
-  const userId = params.get("id");
+  const navigate = useNavigate();
+  const currentUser = getUser();
 
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editingProfile, setEditingProfile] = useState(false);
-  const [profileForm, setProfileForm] = useState(null);
+  const [editForm, setEditForm] = useState({
+    UserName: "",
+    email: "",
+    phone: "",
+    address: ""
+  });
   const [showRefModal, setShowRefModal] = useState(false);
   const [generatingRef, setGeneratingRef] = useState(false);
   const [showCartModal, setShowCartModal] = useState(false);
@@ -21,18 +26,20 @@ const UserDashboardWindow = () => {
 
   // Fetch user data on mount
   useEffect(() => {
-    if (!userId) {
-      setLoading(false);
+    if (!currentUser) {
+      toast.error("Please login first");
+      navigate("/login");
       return;
     }
 
     const fetchUser = async () => {
       try {
-        const response = await axios.get(
-          `http://localhost:5001/api/dashboard/get-user/${userId}`
-        );
+        const response = await axios({
+          method: 'get',
+          url: "http://localhost:5001/api/dashboard/get-user",
+          headers: getAuthHeaders()
+        });
         setUser(response.data.user);
-        setProfileForm(response.data.user);
       } catch (error) {
         toast.error("Failed to load user details");
         console.error(error);
@@ -42,25 +49,35 @@ const UserDashboardWindow = () => {
     };
 
     fetchUser();
-  }, [userId]);
+  }, [currentUser, navigate]);
 
   const handleToggleEditProfile = () => {
-    setEditingProfile((s) => !s);
-    setProfileForm(user);
+    if (!editingProfile) {
+      // Populate form with current user data when opening edit mode
+      setEditForm({
+        UserName: user.UserName || "",
+        email: user.email || "",
+        phone: user.phone || "",
+        address: user.address || ""
+      });
+    }
+    setEditingProfile(!editingProfile);
   };
 
-  const handleProfileChange = (e) => {
+  const handleEditFormChange = (e) => {
     const { name, value } = e.target;
-    setProfileForm((p) => ({ ...p, [name]: value }));
+    setEditForm((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.put(
-        `http://localhost:5001/api/dashboard/update-user/${userId}`,
-        profileForm
-      );
+      const res = await axios({
+        method: 'put',
+        url: "http://localhost:5001/api/dashboard/update-user",
+        data: editForm,
+        headers: getAuthHeaders()
+      });
       setUser(res.data.user);
       setEditingProfile(false);
       toast.success("Profile updated successfully");
@@ -73,9 +90,12 @@ const UserDashboardWindow = () => {
   const handleGenerateRefId = async () => {
     setGeneratingRef(true);
     try {
-      const res = await axios.post(
-        `http://localhost:5001/api/dashboard/generate-refid/${userId}`
-      );
+      const res = await axios({
+        method: 'post',
+        url: "http://localhost:5001/api/dashboard/generate-refid",
+        data: {},
+        headers: getAuthHeaders()
+      });
       setUser(res.data.user);
       toast.success("Reference ID generated successfully");
       setShowRefModal(false);
@@ -90,9 +110,11 @@ const UserDashboardWindow = () => {
   const handleOpenCart = async () => {
     setCartLoading(true);
     try {
-      const response = await axios.get(
-        `http://localhost:5001/api/dashboard/get-user-cart/${userId}`
-      );
+      const response = await axios({
+        method: 'get',
+        url: "http://localhost:5001/api/dashboard/get-user-cart",
+        headers: getAuthHeaders()
+      });
       setCartOrders(response.data.cartOrders);
       setShowCartModal(true);
     } catch (error) {
@@ -105,9 +127,11 @@ const UserDashboardWindow = () => {
 
   const handleCancelOrder = async (orderId) => {
     try {
-      await axios.delete(
-        `http://localhost:5001/api/dashboard/cancel-order/${orderId}`
-      );
+      await axios({
+        method: 'delete',
+        url: `http://localhost:5001/api/dashboard/cancel-order/${orderId}`,
+        headers: getAuthHeaders()
+      });
       // Remove from local cart
       setCartOrders(cartOrders.filter(order => order._id !== orderId));
       toast.success("Order cancelled");
@@ -119,9 +143,12 @@ const UserDashboardWindow = () => {
 
   const handleConfirmAllOrders = async () => {
     try {
-      await axios.put(
-        `http://localhost:5001/api/dashboard/confirm-user-orders/${userId}`
-      );
+      await axios({
+        method: 'put',
+        url: "http://localhost:5001/api/dashboard/confirm-user-orders",
+        data: {},
+        headers: getAuthHeaders()
+      });
       toast.success("All orders confirmed!");
       setShowCartModal(false);
       setCartOrders([]);
@@ -129,6 +156,12 @@ const UserDashboardWindow = () => {
       toast.error("Failed to confirm orders");
       console.error(error);
     }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    toast.success("Logged out successfully");
+    navigate("/login");
   };
 
   if (loading) {
@@ -147,12 +180,8 @@ const UserDashboardWindow = () => {
         <div className="card-body">
           <h2 className="text-2xl font-bold text-center mb-4">User Dashboard</h2>
           <p className="text-center text-error">
-            No user ID provided. Use ?id=USER_ID in the URL.
+            Failed to load user data. Please try logging in again.
           </p>
-          <div className="mt-3 text-sm text-center text-muted">
-            <div>Debug: location.search = <code>{location.search}</code></div>
-            <div>Debug: parsed id = <code>{userId}</code></div>
-          </div>
         </div>
       </div>
     );
@@ -181,7 +210,7 @@ const UserDashboardWindow = () => {
         </div>
 
         {/* Edit Profile Form */}
-        {editingProfile && profileForm && (
+        {editingProfile && (
           <form
             onSubmit={handleUpdateProfile}
             className="bg-base-200 p-4 rounded-lg mb-4"
@@ -193,8 +222,8 @@ const UserDashboardWindow = () => {
                 </label>
                 <input
                   name="UserName"
-                  value={profileForm.UserName || ""}
-                  onChange={handleProfileChange}
+                  value={editForm.UserName}
+                  onChange={handleEditFormChange}
                   className="input input-bordered w-full"
                 />
               </div>
@@ -205,8 +234,8 @@ const UserDashboardWindow = () => {
                 <input
                   name="email"
                   type="email"
-                  value={profileForm.email || ""}
-                  onChange={handleProfileChange}
+                  value={editForm.email}
+                  onChange={handleEditFormChange}
                   className="input input-bordered w-full"
                 />
               </div>
@@ -216,8 +245,8 @@ const UserDashboardWindow = () => {
                 </label>
                 <input
                   name="phone"
-                  value={profileForm.phone || ""}
-                  onChange={handleProfileChange}
+                  value={editForm.phone}
+                  onChange={handleEditFormChange}
                   className="input input-bordered w-full"
                 />
               </div>
@@ -227,8 +256,8 @@ const UserDashboardWindow = () => {
                 </label>
                 <input
                   name="address"
-                  value={profileForm.address || ""}
-                  onChange={handleProfileChange}
+                  value={editForm.address}
+                  onChange={handleEditFormChange}
                   className="input input-bordered w-full"
                 />
               </div>
@@ -287,7 +316,7 @@ const UserDashboardWindow = () => {
         <div className="modal modal-open">
           <div className="modal-box">
             <h3 className="font-bold text-lg mb-4">Reference ID</h3>
-            
+
             {user.refId ? (
               <div>
                 <p className="mb-4">Your permanent reference ID:</p>

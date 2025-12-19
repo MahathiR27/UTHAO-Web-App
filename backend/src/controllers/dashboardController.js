@@ -39,13 +39,15 @@ export const getRestaurantMenuItems = async (req, res) => {
 export const makeReservation = async (req, res) => {
   try {
     const { restaurantId } = req.params;
-    const { name, address, date, numberOfPeople, userId } = req.body;
+    // Get user ID from JWT token
+    const userId = req.user.id;
+    const { name, address, date, numberOfPeople } = req.body;
 
     if (!restaurantId) {
       return res.status(400).json({ message: "Restaurant ID required" });
     }
 
-    if (!name || !address || !date || !numberOfPeople || !userId) {
+    if (!name || !address || !date || !numberOfPeople) {
       return res.status(400).json({ message: "All reservation fields are required" });
     }
 
@@ -174,9 +176,11 @@ export const updateReservationStatus = async (req, res) => {
 // Make an order
 export const makeOrder = async (req, res) => {
   try {
-    const { userId, restaurantId, menuItemId, price, deliveryAddress } = req.body;
+    // Get user ID from JWT token
+    const userId = req.user.id;
+    const { restaurantId, menuItemId, price, deliveryAddress } = req.body;
 
-    if (!userId || !restaurantId || !menuItemId || !price || !deliveryAddress) {
+    if (!restaurantId || !menuItemId || !price || !deliveryAddress) {
       return res.status(400).json({ message: "All order fields are required" });
     }
 

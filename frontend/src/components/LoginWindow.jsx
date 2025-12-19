@@ -57,18 +57,20 @@ const LoginWindow = () => {
         otp
       });
 
-      // Store token in localStorage
+      // Store token
       localStorage.setItem("token", res.data.token);
-      localStorage.setItem("user", JSON.stringify(res.data.user));
-      localStorage.setItem("userType", res.data.userType);
+
+      // Decode token to get user data
+      const token = res.data.token;
+      const payload = JSON.parse(atob(token.split('.')[1]));
 
       toast.success(res.data.message);
 
       // Navigate based on user type
-      if (res.data.userType === "user") {
-        navigate(`/user-dashboard?id=${res.data.user.id}`);
-      } else if (res.data.userType === "restaurant") {
-        navigate(`/restaurant-dashboard?id=${res.data.user.id}`);
+      if (payload.userType === "user") {
+        navigate("/user-dashboard");
+      } else if (payload.userType === "restaurant") {
+        navigate("/restaurant-dashboard");
       }
 
     } catch (err) {

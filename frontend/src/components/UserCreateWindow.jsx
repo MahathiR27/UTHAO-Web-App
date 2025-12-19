@@ -28,9 +28,7 @@ const UserCreateWindow = () => {
         formData
       );
 
-      toast.success("User Registered Successfully");
-
-      console.log(res.data);
+      toast.success("User Registered Successfully! Please login to continue.");
 
       setFormData({
         UserName: "",
@@ -39,6 +37,8 @@ const UserCreateWindow = () => {
         phone: "",
         address: "",
       });
+
+      navigate("/login");
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to register user");
     }
