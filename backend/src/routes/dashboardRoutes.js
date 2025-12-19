@@ -2,29 +2,30 @@ import express from 'express';
 import { getRestaurant, addMenu, updateRestaurant, updateMenu } from '../controllers/restaurantController.js';
 import { getUser, updateUser, generateRefId, getUserCart, cancelOrder, confirmUserOrders } from '../controllers/userController.js';
 import { getRestaurantMenuItems, makeReservation, updateReservationStatus, makeOrder } from '../controllers/dashboardController.js';
+import { verifyToken } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// Restaurant endpoints
-router.get("/get-restaurant/:id", getRestaurant);
-router.post("/add-menu/:id", addMenu);
-router.put("/update-restaurant/:id", updateRestaurant);
-router.put("/update-menu/:id/:index", updateMenu);
+// Restaurant endpoints (protected)
+router.get("/get-restaurant", verifyToken, getRestaurant);
+router.post("/add-menu", verifyToken, addMenu);
+router.put("/update-restaurant", verifyToken, updateRestaurant);
+router.put("/update-menu/:index", verifyToken, updateMenu);
 
-// User endpoints
-router.get("/get-user/:id", getUser);
-router.put("/update-user/:id", updateUser);
-router.post("/generate-refid/:id", generateRefId);
+// User endpoints (protected)
+router.get("/get-user", verifyToken, getUser);
+router.put("/update-user", verifyToken, updateUser);
+router.post("/generate-refid", verifyToken, generateRefId);
 
-// Menu browser endpoints
+// Menu browser endpoints (public for get, protected for write)
 router.get("/get-restaurant-menu/:restaurantId", getRestaurantMenuItems);
-router.post("/make-reservation/:restaurantId", makeReservation);
-router.put("/update-reservation-status/:restaurantId", updateReservationStatus);
-router.post("/make-order", makeOrder);
+router.post("/make-reservation/:restaurantId", verifyToken, makeReservation);
+router.put("/update-reservation-status/:restaurantId", verifyToken, updateReservationStatus);
+router.post("/make-order", verifyToken, makeOrder);
 
-// Cart endpoints
-router.get("/get-user-cart/:userId", getUserCart);
-router.delete("/cancel-order/:orderId", cancelOrder);
-router.put("/confirm-user-orders/:userId", confirmUserOrders);
+// Cart endpoints (protected)
+router.get("/get-user-cart", verifyToken, getUserCart);
+router.delete("/cancel-order/:orderId", verifyToken, cancelOrder);
+router.put("/confirm-user-orders", verifyToken, confirmUserOrders);
 
 export default router;

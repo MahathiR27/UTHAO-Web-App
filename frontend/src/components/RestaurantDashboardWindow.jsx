@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
-import { useLocation } from "react-router";
+import { useNavigate } from "react-router";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { Calendar, Check, X } from "lucide-react";
+import { getUser, getAuthHeaders } from "../utils/authUtils";
 
 const RestaurantDashboardWindow = () => {
-  const location = useLocation();
-  const params = new URLSearchParams(location.search);
-  const restaurantId = params.get("id");
+  const navigate = useNavigate();
+  const currentUser = getUser();
 
   const [restaurant, setRestaurant] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -23,18 +23,20 @@ const RestaurantDashboardWindow = () => {
 
   // Fetch restaurant data on mount
   useEffect(() => {
-    if (!restaurantId) {
-      setLoading(false);
+    if (!currentUser) {
+      toast.error("Please login first");
+      navigate("/login");
       return;
     }
 
     const fetchRestaurant = async () => {
       try {
-        const response = await axios.get(
-          `http://localhost:5001/api/dashboard/get-restaurant/${restaurantId}`
-        );
+        const response = await axios({
+          method: 'get',
+          url: "http://localhost:5001/api/dashboard/get-restaurant",
+          headers: getAuthHeaders()
+        });
         setRestaurant(response.data.restaurant);
-        // initialize profile form when restaurant loads
         setProfileForm(response.data.restaurant);
       } catch (error) {
         toast.error("Failed to load restaurant details");
@@ -45,7 +47,7 @@ const RestaurantDashboardWindow = () => {
     };
 
     fetchRestaurant();
-  }, [restaurantId]);
+  }, [currentUser, navigate]);
 
   // Handle adding a new menu item
   const handleAddMenuItem = async (e) => {
@@ -57,14 +59,16 @@ const RestaurantDashboardWindow = () => {
     }
 
     try {
-      const response = await axios.post(
-        `http://localhost:5001/api/dashboard/add-menu/${restaurantId}`,
-        {
+      const response = await axios({
+        method: 'post',
+        url: "http://localhost:5001/api/dashboard/add-menu",
+        data: {
           name: menuItem.name,
           price: menuItem.price || 0,
           description: menuItem.description,
-        }
-      );
+        },
+        headers: getAuthHeaders()
+      });
 
       // Update local restaurant state with new menu
       setRestaurant({
@@ -81,7 +85,6 @@ const RestaurantDashboardWindow = () => {
       console.error(error);
     }
   };
-
   const handleToggleEditProfile = () => {
     setEditingProfile((s) => !s);
     setProfileForm(restaurant);
@@ -95,10 +98,12 @@ const RestaurantDashboardWindow = () => {
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.put(
-        `http://localhost:5001/api/dashboard/update-restaurant/${restaurantId}`,
-        profileForm
-      );
+      const res = await axios({
+        method: 'put',
+        url: "http://localhost:5001/api/dashboard/update-restaurant",
+        data: profileForm,
+        headers: getAuthHeaders()
+      });
       setRestaurant(res.data.restaurant);
       setEditingProfile(false);
       toast.success("Profile updated");
@@ -122,10 +127,12 @@ const RestaurantDashboardWindow = () => {
   const handleUpdateMenu = async (e, index) => {
     e.preventDefault();
     try {
-      const res = await axios.put(
-        `http://localhost:5001/api/dashboard/update-menu/${restaurantId}/${index}`,
-        editMenuForm
-      );
+      const res = await axios({
+        method: 'put',
+        url: `http://localhost:5001/api/dashboard/update-menu/${index}`,
+        data: editMenuForm,
+        headers: getAuthHeaders()
+      });
       setRestaurant((r) => ({ ...r, menu: res.data.menu }));
       setEditingIndex(null);
       toast.success("Menu updated");
@@ -137,13 +144,15 @@ const RestaurantDashboardWindow = () => {
 
   const handleReservationStatusUpdate = async (reservationId, newStatus) => {
     try {
-      const response = await axios.put(
-        `http://localhost:5001/api/dashboard/update-reservation-status/${restaurantId}`,
-        {
+      const response = await axios({
+        method: 'put',
+        url: `http://localhost:5001/api/dashboard/update-reservation-status/${currentUser.id}`,
+        data: {
           reservationId,
           status: newStatus
-        }
-      );
+        },
+        headers: getAuthHeaders()
+      });
 
       // Update local restaurant state
       setRestaurant(response.data.restaurant);
@@ -188,12 +197,8 @@ const RestaurantDashboardWindow = () => {
       <div className="card w-full max-w-4xl bg-base-100 shadow-xl border border-base-300">
         <div className="card-body">
           <h2 className="text-2xl font-bold text-center mb-4">Restaurant Dashboard</h2>
-          <p className="text-center text-error">No restaurant ID provided. Use ?id=RESTAURANT_ID in the URL.</p>
+          <p className="text-center text-error">Failed to load restaurant data. Please try logging in again.</p>
         </div>
-        <div className="mt-3 text-sm text-center text-muted">
-            <div>Debug: location.search = <code>{location.search}</code></div>
-            <div>Debug: parsed id = <code>{restaurantId}</code></div>
-          </div>
       </div>
     );
   }

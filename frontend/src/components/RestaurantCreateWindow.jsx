@@ -32,18 +32,9 @@ const RestaurantCreateWindow = () => {
         formData
       );
 
-      toast.success("Restaurant Registered Successfully");
+      toast.success("Restaurant Registered Successfully! Please login to continue.");
 
-      // extract id from backend response structure: { message, restaurant: { _id, ... } }
-      const restaurantId = res?.data?.restaurant?._id;
-
-      if (!restaurantId) {
-        console.warn("Create restaurant response missing id:", res?.data);
-        toast.error("Could not find created restaurant id in response");
-        return;
-      }
-
-      // reset form then navigate to dashboard for created restaurant
+      // reset form then navigate to login
       setFormData({
         UserName: "",
         password: "",
@@ -56,7 +47,7 @@ const RestaurantCreateWindow = () => {
         OwnerPhone: "",
       });
 
-      navigate(`/restaurant-dashboard?id=${restaurantId}`);
+      navigate("/login");
 
       
     } catch (err) {

@@ -3,12 +3,13 @@ import { useLocation } from "react-router";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { ShoppingCart, Calendar } from "lucide-react";
+import { getUser, getAuthHeaders } from "../utils/authUtils";
 
 const MenuBrowserWindow = () => {
   const location = useLocation();
   const params = new URLSearchParams(location.search);
   const restaurantId = params.get("id");
-  const userId = params.get("uid");
+  const currentUser = getUser();
 
   const [restaurant, setRestaurant] = useState(null);
   const [menuItems, setMenuItems] = useState([]);
@@ -64,7 +65,7 @@ const MenuBrowserWindow = () => {
   const handleMakeReservation = async (e) => {
     e.preventDefault();
 
-    if (!userId) {
+    if (!currentUser) {
       toast.error("User authentication required");
       return;
     }
@@ -82,13 +83,12 @@ const MenuBrowserWindow = () => {
     }
 
     try {
-      const response = await axios.post(
-        `http://localhost:5001/api/dashboard/make-reservation/${restaurantId}`,
-        {
-          ...reservationForm,
-          userId
-        }
-      );
+      const response = await axios({
+        method: 'post',
+        url: `http://localhost:5001/api/dashboard/make-reservation/${restaurantId}`,
+        data: reservationForm,
+        headers: getAuthHeaders()
+      });
 
       toast.success("Reservation request submitted successfully!");
       setShowReservationModal(false);
@@ -105,7 +105,7 @@ const MenuBrowserWindow = () => {
   };
 
   const openReservationModal = () => {
-    if (!userId) {
+    if (!currentUser) {
       toast.error("User authentication required. Please log in again.");
       return;
     }
@@ -135,25 +135,25 @@ const MenuBrowserWindow = () => {
       return;
     }
 
-    if (!userId) {
-      toast.error("User ID is required. Please log in again.");
+    if (!currentUser) {
+      toast.error("Please log in first");
       return;
     }
 
     try {
       const orderData = {
-        userId: userId,
         restaurantId: restaurantId,
         menuItemId: selectedMenuItem._id || selectedMenuItem.id,
         price: selectedMenuItem.price || 0,
-        deliveryAddress: orderForm.deliveryAddress,
-        status: 'pending'
+        deliveryAddress: orderForm.deliveryAddress
       };
 
-      const response = await axios.post(
-        `http://localhost:5001/api/dashboard/make-order`,
-        orderData
-      );
+      const response = await axios({
+        method: 'post',
+        url: `http://localhost:5001/api/dashboard/make-order`,
+        data: orderData,
+        headers: getAuthHeaders()
+      });
 
       toast.success("Order placed successfully!");
       setShowOrderModal(false);

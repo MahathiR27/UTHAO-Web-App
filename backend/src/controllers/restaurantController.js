@@ -30,11 +30,11 @@ export const  createRestaurant = async (req, res) => {
 
 export const updateRestaurant = async (req, res) => {
     try {
-        const { id } = req.params;
+        // Get restaurant ID from JWT token
+        const restaurantId = req.user.id;
         const updates = req.body;
-        if (!id) return res.status(400).json({ message: "Restaurant id required" });
 
-        const restaurant = await Restaurant.findById(id);
+        const restaurant = await Restaurant.findById(restaurantId);
         if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
 
         // Update allowed fields
@@ -65,11 +65,12 @@ export const updateRestaurant = async (req, res) => {
 
 export const updateMenu = async (req, res) => {
     try {
-        const { id, index } = req.params;
+        // Get restaurant ID from JWT token
+        const restaurantId = req.user.id;
+        const { index } = req.params;
         const { name, price, description } = req.body;
 
-        if (!id) return res.status(400).json({ message: "Restaurant id required" });
-        const restaurant = await Restaurant.findById(id);
+        const restaurant = await Restaurant.findById(restaurantId);
         if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
 
         const idx = Number(index);
@@ -91,10 +92,10 @@ export const updateMenu = async (req, res) => {
 
 export const getRestaurant = async (req, res) => {
     try {
-        const { id } = req.params;
-        if (!id) return res.status(400).json({ message: "Restaurant id required" });
+        // Get restaurant ID from JWT token
+        const restaurantId = req.user.id;
 
-        const restaurant = await Restaurant.findById(id).lean();
+        const restaurant = await Restaurant.findById(restaurantId).lean();
         if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
 
         return res.status(200).json({ restaurant });
@@ -106,13 +107,13 @@ export const getRestaurant = async (req, res) => {
 
 export const addMenu = async (req, res) => {
     try {
-        const { id } = req.params;
+        // Get restaurant ID from JWT token
+        const restaurantId = req.user.id;
         const { name, price, description } = req.body;
 
-        if (!id) return res.status(400).json({ message: "Restaurant id required" });
         if (!name) return res.status(400).json({ message: "Menu item name is required" });
 
-        const restaurant = await Restaurant.findById(id);
+        const restaurant = await Restaurant.findById(restaurantId);
         if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
 
         restaurant.menu = restaurant.menu || [];
