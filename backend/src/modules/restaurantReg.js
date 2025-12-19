@@ -38,6 +38,16 @@ const restaurantDetailsSchema = new mongoose.Schema(
             type: String,
             required: true
         },
+        reservationLimit: {
+            type: Number,
+            required: false,
+            default: 0
+        },
+        currentReservations: {
+            type: Number,
+            default: 0,
+            required: false
+        },
         menu: {
             type: [
                 {
@@ -45,6 +55,34 @@ const restaurantDetailsSchema = new mongoose.Schema(
                     price: { type: Number },
                     description: { type: String },
                     image: { type: String }
+                }
+            ],
+            default: []
+        },
+        reservations: {
+            type: [
+                {
+                    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'userReg' },
+                    name: { type: String, required: true },
+                    address: { type: String, required: true },
+                    date: { type: Date, required: true },
+                    numberOfPeople: { type: Number, required: true },
+                    status: { type: String, enum: ['pending', 'confirmed', 'cancelled'], default: 'pending' },
+                    createdAt: { type: Date, default: Date.now }
+                }
+            ],
+            default: []
+        },
+        orders: {
+            type: [
+                {
+                    orderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Order' },
+                    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'userReg' },
+                    menuItemId: { type: String },
+                    date: { type: Date, required: true },
+                    price: { type: Number, required: true },
+                    deliveryAddress: { type: String, required: true },
+                    status: { type: String, enum: ['pending', 'confirmed', 'preparing', 'delivering', 'delivered', 'cancelled'], default: 'pending' },
                 }
             ],
             default: []

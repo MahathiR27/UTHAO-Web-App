@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation } from "react-router";
 import axios from "axios";
 import toast from "react-hot-toast";
+import { X } from "lucide-react";
 
 const UserDashboardWindow = () => {
   const location = useLocation();
@@ -14,6 +15,9 @@ const UserDashboardWindow = () => {
   const [profileForm, setProfileForm] = useState(null);
   const [showRefModal, setShowRefModal] = useState(false);
   const [generatingRef, setGeneratingRef] = useState(false);
+  const [showCartModal, setShowCartModal] = useState(false);
+  const [cartOrders, setCartOrders] = useState([]);
+  const [cartLoading, setCartLoading] = useState(false);
 
   // Fetch user data on mount
   useEffect(() => {
@@ -80,6 +84,50 @@ const UserDashboardWindow = () => {
       console.error(err);
     } finally {
       setGeneratingRef(false);
+    }
+  };
+
+  const handleOpenCart = async () => {
+    setCartLoading(true);
+    try {
+      const response = await axios.get(
+        `http://localhost:5001/api/dashboard/get-user-cart/${userId}`
+      );
+      setCartOrders(response.data.cartOrders);
+      setShowCartModal(true);
+    } catch (error) {
+      toast.error("Failed to load cart");
+      console.error(error);
+    } finally {
+      setCartLoading(false);
+    }
+  };
+
+  const handleCancelOrder = async (orderId) => {
+    try {
+      await axios.delete(
+        `http://localhost:5001/api/dashboard/cancel-order/${orderId}`
+      );
+      // Remove from local cart
+      setCartOrders(cartOrders.filter(order => order._id !== orderId));
+      toast.success("Order cancelled");
+    } catch (error) {
+      toast.error("Failed to cancel order");
+      console.error(error);
+    }
+  };
+
+  const handleConfirmAllOrders = async () => {
+    try {
+      await axios.put(
+        `http://localhost:5001/api/dashboard/confirm-user-orders/${userId}`
+      );
+      toast.success("All orders confirmed!");
+      setShowCartModal(false);
+      setCartOrders([]);
+    } catch (error) {
+      toast.error("Failed to confirm orders");
+      console.error(error);
     }
   };
 
@@ -227,6 +275,7 @@ const UserDashboardWindow = () => {
           <div className="divider"></div>
 
           <div className="flex justify-center gap-4">
+            <button className="btn btn-primary" onClick={() => handleOpenCart()}>See Cart</button>
             <button className="btn btn-outline">View Order History</button>
             <button className="btn btn-outline">Browse Restaurants</button>
           </div>
@@ -270,6 +319,69 @@ const UserDashboardWindow = () => {
               <button className="btn" onClick={() => setShowRefModal(false)}>
                 Close
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cart Modal */}
+      {showCartModal && (
+        <div className="modal modal-open">
+          <div className="modal-box w-full max-w-2xl">
+            <h3 className="font-bold text-lg mb-4">Your Cart</h3>
+
+            {cartOrders.length === 0 ? (
+              <p className="text-center text-gray-500 py-8">Your cart is empty</p>
+            ) : (
+              <>
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {cartOrders.map((order) => (
+                    <div key={order._id} className="flex items-center justify-between bg-base-200 p-4 rounded-lg">
+                      <div className="flex-1">
+                        <h4 className="font-semibold">{order.menuItemName}</h4>
+                        <p className="text-sm text-gray-600">{order.restaurantName}</p>
+                        <p className="text-sm">{order.deliveryAddress}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="font-bold text-primary">${order.price}</span>
+                        <button
+                          onClick={() => handleCancelOrder(order._id)}
+                          className="btn btn-sm btn-circle btn-error"
+                          title="Cancel Order"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="divider"></div>
+
+                <div className="flex justify-between items-center mb-4">
+                  <span className="text-lg font-bold">Total:</span>
+                  <span className="text-xl font-bold text-primary">
+                    ${cartOrders.reduce((total, order) => total + order.price, 0).toFixed(2)}
+                  </span>
+                </div>
+              </>
+            )}
+
+            <div className="modal-action">
+              <button
+                onClick={() => setShowCartModal(false)}
+                className="btn btn-ghost"
+              >
+                Close
+              </button>
+              {cartOrders.length > 0 && (
+                <button
+                  onClick={handleConfirmAllOrders}
+                  className="btn btn-primary"
+                >
+                  Confirm All Orders
+                </button>
+              )}
             </div>
           </div>
         </div>

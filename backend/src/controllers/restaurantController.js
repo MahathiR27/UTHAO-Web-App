@@ -46,6 +46,7 @@ export const updateRestaurant = async (req, res) => {
             "email",
             "RestaurantPhone",
             "OwnerPhone",
+            "reservationLimit",
         ];
 
         allowed.forEach((key) => {

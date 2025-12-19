@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation } from "react-router";
 import axios from "axios";
 import toast from "react-hot-toast";
+import { Calendar, Check, X } from "lucide-react";
 
 const RestaurantDashboardWindow = () => {
   const location = useLocation();
@@ -16,6 +17,9 @@ const RestaurantDashboardWindow = () => {
   const [profileForm, setProfileForm] = useState(null);
   const [editingIndex, setEditingIndex] = useState(null);
   const [editMenuForm, setEditMenuForm] = useState({ name: "", price: "", description: "" });
+  const [reservationFilter, setReservationFilter] = useState("all"); // "all", "pending", "confirmed"
+  const [selectedReservation, setSelectedReservation] = useState(null);
+  const [showReservationModal, setShowReservationModal] = useState(false);
 
   // Fetch restaurant data on mount
   useEffect(() => {
@@ -131,6 +135,44 @@ const RestaurantDashboardWindow = () => {
     }
   };
 
+  const handleReservationStatusUpdate = async (reservationId, newStatus) => {
+    try {
+      const response = await axios.put(
+        `http://localhost:5001/api/dashboard/update-reservation-status/${restaurantId}`,
+        {
+          reservationId,
+          status: newStatus
+        }
+      );
+
+      // Update local restaurant state
+      setRestaurant(response.data.restaurant);
+      setShowReservationModal(false);
+      setSelectedReservation(null);
+      toast.success(`Reservation ${newStatus} successfully`);
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to update reservation status");
+      console.error(error);
+    }
+  };
+
+  const openReservationModal = (reservation) => {
+    setSelectedReservation(reservation);
+    setShowReservationModal(true);
+  };
+
+  const closeReservationModal = () => {
+    setShowReservationModal(false);
+    setSelectedReservation(null);
+  };
+
+  const getFilteredReservations = () => {
+    if (!restaurant?.reservations) return [];
+
+    if (reservationFilter === "all") return restaurant.reservations;
+    return restaurant.reservations.filter(r => r.status === reservationFilter);
+  };
+
   if (loading) {
     return (
       <div className="card w-full max-w-4xl bg-base-100 shadow-xl border border-base-300">
@@ -157,11 +199,12 @@ const RestaurantDashboardWindow = () => {
   }
 
   return (
-    <div className="card w-full max-w-4xl bg-base-100 shadow-xl border border-base-300">
+    <div className="space-y-6">
+    {/* Profile Card */}
+    <div className="card w-full bg-base-100 shadow-xl border border-base-300">
       <div className="card-body">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold">Restaurant Dashboard</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-2xl font-bold">Restaurant Profile</h2>
           <div>
             <button className="btn btn-sm btn-outline mr-2" onClick={handleToggleEditProfile}>
               {editingProfile ? "Close" : "Edit Profile"}
@@ -170,7 +213,7 @@ const RestaurantDashboardWindow = () => {
         </div>
 
         {editingProfile && profileForm && (
-          <form onSubmit={handleUpdateProfile} className="bg-base-200 p-4 rounded-lg mb-4">
+          <form onSubmit={handleUpdateProfile} className="bg-base-200 p-4 rounded-lg mb-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="label"><span className="label-text">Restaurant Name</span></label>
@@ -200,6 +243,17 @@ const RestaurantDashboardWindow = () => {
                 <label className="label"><span className="label-text">Description</span></label>
                 <textarea name="description" value={profileForm.description || ""} onChange={handleProfileChange} className="textarea textarea-bordered w-full" />
               </div>
+              <div>
+                <label className="label"><span className="label-text">Reservation Limit</span></label>
+                <input
+                  name="reservationLimit"
+                  type="number"
+                  min="0"
+                  value={profileForm.reservationLimit || 0}
+                  onChange={handleProfileChange}
+                  className="input input-bordered w-full"
+                />
+              </div>
             </div>
             <div className="mt-3">
               <button type="submit" className="btn btn-primary">Save Profile</button>
@@ -207,8 +261,7 @@ const RestaurantDashboardWindow = () => {
           </form>
         )}
 
-        {/* Restaurant Info Section */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Left Column - Main Info */}
           <div className="bg-base-200 p-4 rounded-lg">
             <h3 className="text-xl font-bold mb-3">{restaurant.RestaurantName}</h3>
@@ -232,144 +285,278 @@ const RestaurantDashboardWindow = () => {
                   <strong>Owner Phone:</strong> {restaurant.OwnerPhone}
                 </div>
               )}
+              <div>
+                <strong>Reservation Limit:</strong> {restaurant.reservationLimit || 0}
+              </div>
             </div>
           </div>
 
           {/* Right Column - Stats */}
           <div className="bg-base-200 p-4 rounded-lg flex flex-col justify-between">
             <div>
-              <h4 className="font-bold text-lg mb-3">Menu Statistics</h4>
+              <h4 className="font-bold text-lg mb-3">Restaurant Statistics</h4>
               <div className="stats shadow">
                 <div className="stat">
-                  <div className="stat-title">Total Items</div>
+                  <div className="stat-title">Menu Items</div>
                   <div className="stat-value text-primary">
                     {restaurant.menu ? restaurant.menu.length : 0}
                   </div>
+                </div>
+                <div className="stat">
+                  <div className="stat-title">Current Reservations</div>
+                  <div className="stat-value text-secondary">
+                    {restaurant.reservations?.filter(r => r.status === 'pending' || r.status === 'confirmed')
+                      .reduce((total, r) => total + r.numberOfPeople, 0) || 0}
+                  </div>
+                  <div className="stat-desc">of {restaurant.reservationLimit || 0} limit</div>
                 </div>
               </div>
             </div>
           </div>
         </div>
+      </div>
+    </div>
 
-        {/* Menu Section */}
-        <div className="divider"></div>
+    {/* Menu Card */}
+    <div className="card w-full bg-base-100 shadow-xl border border-base-300">
+      <div className="card-body">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold">Menu Management</h2>
+          <button
+            className="btn btn-sm btn-primary"
+            onClick={() => setShowForm(!showForm)}
+          >
+            {showForm ? "Cancel" : "+ Add Menu Item"}
+          </button>
+        </div>
 
-        <div className="mb-4">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl font-bold">Menu Items</h3>
-            <button
-              className="btn btn-sm btn-primary"
-              onClick={() => setShowForm(!showForm)}
-            >
-              {showForm ? "Cancel" : "+ Add Menu Item"}
-            </button>
-          </div>
+        {/* Add Menu Form */}
+        {showForm && (
+          <form onSubmit={handleAddMenuItem} className="bg-base-200 p-4 rounded-lg mb-6">
+            <div className="space-y-3">
+              <div>
+                <label className="label">
+                  <span className="label-text">Item Name</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., Margherita Pizza"
+                  value={menuItem.name}
+                  onChange={(e) => setMenuItem({ ...menuItem, name: e.target.value })}
+                  className="input input-bordered w-full focus:outline-none"
+                  required
+                />
+              </div>
 
-          {/* Add Menu Form */}
-          {showForm && (
-            <form onSubmit={handleAddMenuItem} className="bg-base-200 p-4 rounded-lg mb-4">
-              <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="label">
-                    <span className="label-text">Item Name</span>
+                    <span className="label-text">Price</span>
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="0.00"
+                    step="0.01"
+                    min="0"
+                    value={menuItem.price}
+                    onChange={(e) => setMenuItem({ ...menuItem, price: e.target.value })}
+                    className="input input-bordered w-full focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="label">
+                    <span className="label-text">Description</span>
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g., Margherita Pizza"
-                    value={menuItem.name}
-                    onChange={(e) => setMenuItem({ ...menuItem, name: e.target.value })}
+                    placeholder="Optional description"
+                    value={menuItem.description}
+                    onChange={(e) => setMenuItem({ ...menuItem, description: e.target.value })}
                     className="input input-bordered w-full focus:outline-none"
-                    required
                   />
                 </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="label">
-                      <span className="label-text">Price</span>
-                    </label>
-                    <input
-                      type="number"
-                      placeholder="0.00"
-                      step="0.01"
-                      min="0"
-                      value={menuItem.price}
-                      onChange={(e) => setMenuItem({ ...menuItem, price: e.target.value })}
-                      className="input input-bordered w-full focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="label">
-                      <span className="label-text">Description</span>
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Optional description"
-                      value={menuItem.description}
-                      onChange={(e) => setMenuItem({ ...menuItem, description: e.target.value })}
-                      className="input input-bordered w-full focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                <button type="submit" className="btn btn-success w-full">
-                  Add Menu Item
-                </button>
               </div>
-            </form>
+
+              <button type="submit" className="btn btn-success w-full">
+                Add Menu Item
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* Menu List */}
+        <div className="space-y-3">
+          {!restaurant.menu || restaurant.menu.length === 0 ? (
+            <div className="alert alert-info">
+              <span>No menu items yet. Add one to get started!</span>
+            </div>
+          ) : (
+            restaurant.menu.map((item, index) => (
+              <div key={index} className="bg-base-200 p-4 rounded-lg">
+                {editingIndex === index ? (
+                  <form onSubmit={(e) => handleUpdateMenu(e, index)} className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                    <div>
+                      <label className="label"><span className="label-text">Name</span></label>
+                      <input value={editMenuForm.name} onChange={(e) => setEditMenuForm((f) => ({ ...f, name: e.target.value }))} className="input input-bordered w-full" />
+                    </div>
+                    <div>
+                      <label className="label"><span className="label-text">Price</span></label>
+                      <input type="number" value={editMenuForm.price} onChange={(e) => setEditMenuForm((f) => ({ ...f, price: e.target.value }))} className="input input-bordered w-full" />
+                    </div>
+                    <div>
+                      <label className="label"><span className="label-text">Description</span></label>
+                      <input value={editMenuForm.description} onChange={(e) => setEditMenuForm((f) => ({ ...f, description: e.target.value }))} className="input input-bordered w-full" />
+                    </div>
+                    <div className="md:col-span-3 flex gap-2">
+                      <button type="submit" className="btn btn-sm btn-success">Save</button>
+                      <button type="button" onClick={cancelEditMenu} className="btn btn-sm">Cancel</button>
+                    </div>
+                  </form>
+                ) : (
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h4 className="font-bold text-lg">{item.name}</h4>
+                      {item.description && (
+                        <p className="text-sm text-gray-600">{item.description}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="text-xl font-bold text-primary">
+                        ${parseFloat(item.price || 0).toFixed(2)}
+                      </div>
+                      <button className="btn btn-sm" onClick={() => startEditMenu(index)}>Edit</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))
           )}
+        </div>
+      </div>
+    </div>
 
-          {/* Menu List */}
-          <div className="space-y-3">
-            {!restaurant.menu || restaurant.menu.length === 0 ? (
-              <div className="alert alert-info">
-                <span>No menu items yet. Add one to get started!</span>
-              </div>
+    {/* Reservations Card */}
+    <div className="card w-full bg-base-100 shadow-xl border border-base-300">
+      <div className="card-body">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold">Reservation Management</h2>
+          <div className="flex gap-2">
+            <select
+              value={reservationFilter}
+              onChange={(e) => setReservationFilter(e.target.value)}
+              className="select select-bordered select-sm"
+            >
+              <option value="all">All Reservations</option>
+              <option value="pending">Pending</option>
+              <option value="confirmed">Confirmed</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="bg-base-200 rounded-lg max-h-96 overflow-y-auto">
+          <div className="p-4">
+            {getFilteredReservations().length === 0 ? (
+              <p className="text-center text-gray-500 py-8">
+                No {reservationFilter === "all" ? "" : reservationFilter} reservations
+              </p>
             ) : (
-              restaurant.menu.map((item, index) => (
-                <div key={index} className="bg-base-200 p-4 rounded-lg">
-                  {editingIndex === index ? (
-                    <form onSubmit={(e) => handleUpdateMenu(e, index)} className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
-                      <div>
-                        <label className="label"><span className="label-text">Name</span></label>
-                        <input value={editMenuForm.name} onChange={(e) => setEditMenuForm((f) => ({ ...f, name: e.target.value }))} className="input input-bordered w-full" />
-                      </div>
-                      <div>
-                        <label className="label"><span className="label-text">Price</span></label>
-                        <input type="number" value={editMenuForm.price} onChange={(e) => setEditMenuForm((f) => ({ ...f, price: e.target.value }))} className="input input-bordered w-full" />
-                      </div>
-                      <div>
-                        <label className="label"><span className="label-text">Description</span></label>
-                        <input value={editMenuForm.description} onChange={(e) => setEditMenuForm((f) => ({ ...f, description: e.target.value }))} className="input input-bordered w-full" />
-                      </div>
-                      <div className="md:col-span-3 flex gap-2">
-                        <button type="submit" className="btn btn-sm btn-success">Save</button>
-                        <button type="button" onClick={cancelEditMenu} className="btn btn-sm">Cancel</button>
-                      </div>
-                    </form>
-                  ) : (
-                    <div className="flex items-start justify-between">
+              <div className="space-y-3">
+                {getFilteredReservations().map((reservation, index) => (
+                  <div
+                    key={reservation._id || index}
+                    className="bg-base-100 p-4 rounded-lg cursor-pointer hover:bg-base-300 transition-colors"
+                    onClick={() => openReservationModal(reservation)}
+                  >
+                    <div className="flex justify-between items-start">
                       <div className="flex-1">
-                        <h4 className="font-bold text-lg">{item.name}</h4>
-                        {item.description && (
-                          <p className="text-sm text-gray-600">{item.description}</p>
-                        )}
+                        <h4 className="font-bold">{reservation.name}</h4>
+                        <p className="text-sm text-gray-600">
+                          {reservation.numberOfPeople} people • {new Date(reservation.date).toLocaleDateString()}
+                        </p>
+                        <p className="text-sm">{reservation.address}</p>
                       </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-xl font-bold text-primary">
-                          ${parseFloat(item.price || 0).toFixed(2)}
-                        </div>
-                        <button className="btn btn-sm" onClick={() => startEditMenu(index)}>Edit</button>
+                      <div className="flex items-center gap-2">
+                        <span className={`badge ${
+                          reservation.status === 'pending' ? 'badge-warning' :
+                          reservation.status === 'confirmed' ? 'badge-success' :
+                          'badge-error'
+                        }`}>
+                          {reservation.status}
+                        </span>
+                        <Calendar size={16} />
                       </div>
                     </div>
-                  )}
-                </div>
-              ))
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </div>
       </div>
     </div>
+
+    {/* Reservation Details Modal */}
+    {showReservationModal && selectedReservation && (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="modal modal-open">
+          <div className="modal-box w-full max-w-md">
+            <h3 className="font-bold text-lg mb-4">Reservation Details</h3>
+            <div className="space-y-3">
+              <div>
+                <strong>Name:</strong> {selectedReservation.name}
+              </div>
+              <div>
+                <strong>Address:</strong> {selectedReservation.address}
+              </div>
+              <div>
+                <strong>Date:</strong> {new Date(selectedReservation.date).toLocaleDateString()}
+              </div>
+              <div>
+                <strong>Number of People:</strong> {selectedReservation.numberOfPeople}
+              </div>
+              <div>
+                <strong>Status:</strong>{" "}
+                <span className={`badge ${
+                  selectedReservation.status === 'pending' ? 'badge-warning' :
+                  selectedReservation.status === 'confirmed' ? 'badge-success' :
+                  'badge-error'
+                }`}>
+                  {selectedReservation.status}
+                </span>
+              </div>
+              <div>
+                <strong>Created:</strong> {new Date(selectedReservation.createdAt).toLocaleString()}
+              </div>
+            </div>
+            <div className="modal-action">
+              {selectedReservation.status === 'pending' && (
+                <>
+                  <button
+                    onClick={() => handleReservationStatusUpdate(selectedReservation._id, 'confirmed')}
+                    className="btn btn-success gap-2"
+                  >
+                    <Check size={16} />
+                    Accept
+                  </button>
+                  <button
+                    onClick={() => handleReservationStatusUpdate(selectedReservation._id, 'cancelled')}
+                    className="btn btn-error gap-2"
+                  >
+                    <X size={16} />
+                    Cancel
+                  </button>
+                </>
+              )}
+              <button onClick={closeReservationModal} className="btn btn-ghost">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+  </div>
   );
 };
 

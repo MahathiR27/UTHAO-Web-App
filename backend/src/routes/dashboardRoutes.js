@@ -1,7 +1,7 @@
 import express from 'express';
 import { getRestaurant, addMenu, updateRestaurant, updateMenu } from '../controllers/restaurantController.js';
-import { getUser, updateUser, generateRefId } from '../controllers/userController.js';
-import { getAllMenuItems, getRestaurantMenuItems } from '../controllers/dashboardController.js';
+import { getUser, updateUser, generateRefId, getUserCart, cancelOrder, confirmUserOrders } from '../controllers/userController.js';
+import { getRestaurantMenuItems, makeReservation, updateReservationStatus, makeOrder } from '../controllers/dashboardController.js';
 
 const router = express.Router();
 
@@ -17,7 +17,14 @@ router.put("/update-user/:id", updateUser);
 router.post("/generate-refid/:id", generateRefId);
 
 // Menu browser endpoints
-router.get("/get-all-menu-items", getAllMenuItems);
 router.get("/get-restaurant-menu/:restaurantId", getRestaurantMenuItems);
+router.post("/make-reservation/:restaurantId", makeReservation);
+router.put("/update-reservation-status/:restaurantId", updateReservationStatus);
+router.post("/make-order", makeOrder);
+
+// Cart endpoints
+router.get("/get-user-cart/:userId", getUserCart);
+router.delete("/cancel-order/:orderId", cancelOrder);
+router.put("/confirm-user-orders/:userId", confirmUserOrders);
 
 export default router;

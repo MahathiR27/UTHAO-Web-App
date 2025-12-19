@@ -1,60 +1,174 @@
 import { useEffect, useState } from "react";
+import { useLocation } from "react-router";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { X, ShoppingCart } from "lucide-react";
+import { ShoppingCart, Calendar } from "lucide-react";
 
 const MenuBrowserWindow = () => {
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const restaurantId = params.get("id");
+  const userId = params.get("uid");
+
+  const [restaurant, setRestaurant] = useState(null);
   const [menuItems, setMenuItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedRestaurant, setSelectedRestaurant] = useState(null);
-  const [showRestaurantModal, setShowRestaurantModal] = useState(false);
-  const [restaurantDetails, setRestaurantDetails] = useState(null);
-  const [restaurantMenuItems, setRestaurantMenuItems] = useState([]);
+  const [showReservationModal, setShowReservationModal] = useState(false);
+  const [showOrderModal, setShowOrderModal] = useState(false);
+  const [selectedMenuItem, setSelectedMenuItem] = useState(null);
+  const [reservationForm, setReservationForm] = useState({
+    name: "",
+    address: "",
+    date: "",
+    numberOfPeople: ""
+  });
+  const [orderForm, setOrderForm] = useState({
+    deliveryAddress: ""
+  });
 
-  // Fetch all menu items on mount
+  // Fetch restaurant menu items on mount
   useEffect(() => {
-    const fetchMenuItems = async () => {
+    if (!restaurantId) {
+      setLoading(false);
+      return;
+    }
+
+    const fetchRestaurantMenu = async () => {
       try {
         const response = await axios.get(
-          "http://localhost:5001/api/dashboard/get-all-menu-items"
+          `http://localhost:5001/api/dashboard/get-restaurant-menu/${restaurantId}`
         );
-        setMenuItems(response.data.items || []);
+        setRestaurant(response.data.restaurant);
+        setMenuItems(response.data.menuItems || []);
       } catch (error) {
-        toast.error("Failed to load menu items");
+        toast.error("Failed to load restaurant menu");
         console.error(error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchMenuItems();
-  }, []);
+    fetchRestaurantMenu();
+  }, [restaurantId]);
 
-  const handleViewRestaurant = async (restaurantId) => {
+  const handleOrder = (menuItem) => {
+    setSelectedMenuItem(menuItem);
+    setShowOrderModal(true);
+  };
+
+  const handleReservationChange = (e) => {
+    const { name, value } = e.target;
+    setReservationForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleMakeReservation = async (e) => {
+    e.preventDefault();
+
+    if (!userId) {
+      toast.error("User authentication required");
+      return;
+    }
+
+    // Basic validation
+    if (!reservationForm.name || !reservationForm.address || !reservationForm.date || !reservationForm.numberOfPeople) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+
+    const peopleCount = parseInt(reservationForm.numberOfPeople);
+    if (peopleCount <= 0) {
+      toast.error("Number of people must be greater than 0");
+      return;
+    }
+
     try {
-      const response = await axios.get(
-        `http://localhost:5001/api/dashboard/get-restaurant/${restaurantId}`
+      const response = await axios.post(
+        `http://localhost:5001/api/dashboard/make-reservation/${restaurantId}`,
+        {
+          ...reservationForm,
+          userId
+        }
       );
-      setRestaurantDetails(response.data.restaurant);
-      setRestaurantMenuItems(response.data.restaurant.menu || []);
-      setSelectedRestaurant(restaurantId);
-      setShowRestaurantModal(true);
+
+      toast.success("Reservation request submitted successfully!");
+      setShowReservationModal(false);
+      setReservationForm({
+        name: "",
+        address: "",
+        date: "",
+        numberOfPeople: ""
+      });
     } catch (error) {
-      toast.error("Failed to load restaurant details");
+      toast.error(error.response?.data?.message || "Failed to make reservation");
       console.error(error);
     }
   };
 
-  const handleOrder = (menuItem) => {
-    toast.success(`Added "${menuItem.name}" to cart (placeholder)`);
-    // TODO: Implement actual order functionality
+  const openReservationModal = () => {
+    if (!userId) {
+      toast.error("User authentication required. Please log in again.");
+      return;
+    }
+    setShowReservationModal(true);
   };
 
-  const closeModal = () => {
-    setShowRestaurantModal(false);
-    setSelectedRestaurant(null);
-    setRestaurantDetails(null);
-    setRestaurantMenuItems([]);
+  const closeReservationModal = () => {
+    setShowReservationModal(false);
+    setReservationForm({
+      name: "",
+      address: "",
+      date: "",
+      numberOfPeople: ""
+    });
+  };
+
+  const handleOrderChange = (e) => {
+    const { name, value } = e.target;
+    setOrderForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleMakeOrder = async (e) => {
+    e.preventDefault();
+
+    if (!orderForm.deliveryAddress.trim()) {
+      toast.error("Please enter a delivery address");
+      return;
+    }
+
+    if (!userId) {
+      toast.error("User ID is required. Please log in again.");
+      return;
+    }
+
+    try {
+      const orderData = {
+        userId: userId,
+        restaurantId: restaurantId,
+        menuItemId: selectedMenuItem._id || selectedMenuItem.id,
+        price: selectedMenuItem.price || 0,
+        deliveryAddress: orderForm.deliveryAddress,
+        status: 'pending'
+      };
+
+      const response = await axios.post(
+        `http://localhost:5001/api/dashboard/make-order`,
+        orderData
+      );
+
+      toast.success("Order placed successfully!");
+      setShowOrderModal(false);
+      setOrderForm({ deliveryAddress: "" });
+      setSelectedMenuItem(null);
+    } catch (error) {
+      console.error("Order error:", error);
+      toast.error(error.response?.data?.message || "Failed to place order");
+    }
+  };
+
+  const closeOrderModal = () => {
+    setShowOrderModal(false);
+    setOrderForm({ deliveryAddress: "" });
+    setSelectedMenuItem(null);
   };
 
   if (loading) {
@@ -65,13 +179,97 @@ const MenuBrowserWindow = () => {
     );
   }
 
+  if (!restaurantId) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-4">No Restaurant Selected</h2>
+          <p className="text-gray-600">Please select a restaurant to view its menu.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 bg-base-200 min-h-screen">
-      <h1 className="text-3xl font-bold mb-8 text-center">Restaurant Menu Browser</h1>
+      {/* Restaurant Header */}
+      {restaurant && (
+        <div className="max-w-7xl mx-auto mb-8">
+          <div className="card bg-base-100 shadow-lg">
+            <div className="card-body">
+              <h1 className="text-3xl font-bold">{restaurant.RestaurantName}</h1>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+                <div>
+                  <span className="font-semibold">Owner:</span> {restaurant.OwnerName}
+                </div>
+                <div>
+                  <span className="font-semibold">Phone:</span> {restaurant.RestaurantPhone}
+                </div>
+                <div>
+                  <span className="font-semibold">Address:</span> {restaurant.address}
+                </div>
+              </div>
+              {restaurant.description && (
+                <p className="mt-4 text-gray-600">{restaurant.description}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reservation Card */}
+      {restaurant && (
+        <div className="max-w-7xl mx-auto mb-8">
+          <div className="card bg-base-100 shadow-lg">
+            <div className="card-body">
+              <h3 className="card-title text-xl">Make a Reservation</h3>
+              <div className="mb-4">
+                {restaurant.reservationLimit === 0 ? (
+                  <p className="text-red-600 font-semibold">Cannot reserve - No reservation limit set</p>
+                ) : (() => {
+                  const usedSeats = restaurant.reservations?.filter(r => r.status === 'pending' || r.status === 'confirmed')
+                    .reduce((total, r) => total + r.numberOfPeople, 0) || 0;
+                  const remainingSeats = restaurant.reservationLimit - usedSeats;
+                  return remainingSeats <= 0 ? (
+                    <p className="text-red-600 font-semibold">Cannot reserve - All seats are booked</p>
+                  ) : (
+                    <p className="text-green-600 font-semibold">
+                      {remainingSeats} seats remaining out of {restaurant.reservationLimit}
+                    </p>
+                  );
+                })()}
+              </div>
+              <div className="card-actions justify-end">
+                <button
+                  onClick={openReservationModal}
+                  className={`btn gap-2 ${
+                    restaurant.reservationLimit === 0 ||
+                    (restaurant.reservations?.filter(r => r.status === 'pending' || r.status === 'confirmed')
+                      .reduce((total, r) => total + r.numberOfPeople, 0) || 0) >= restaurant.reservationLimit
+                      ? 'btn-disabled'
+                      : 'btn-secondary'
+                  }`}
+                  disabled={
+                    restaurant.reservationLimit === 0 ||
+                    (restaurant.reservations?.filter(r => r.status === 'pending' || r.status === 'confirmed')
+                      .reduce((total, r) => total + r.numberOfPeople, 0) || 0) >= restaurant.reservationLimit
+                  }
+                >
+                  <Calendar size={16} />
+                  Make Reservation
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Menu Items */}
+      <h2 className="text-2xl font-bold mb-6 text-center">Menu</h2>
 
       {menuItems.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-lg text-gray-500">No menu items available</p>
+          <p className="text-lg text-gray-500">No menu items available for this restaurant</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
@@ -97,14 +295,6 @@ const MenuBrowserWindow = () => {
                   <span className="text-xl font-bold text-primary">
                     ${item.price || "N/A"}
                   </span>
-                  {item.restaurantId && (
-                    <button
-                      onClick={() => handleViewRestaurant(item.restaurantId)}
-                      className="btn btn-sm btn-outline"
-                    >
-                      View Restaurant
-                    </button>
-                  )}
                 </div>
                 <div className="card-actions justify-end mt-4">
                   <button
@@ -121,107 +311,128 @@ const MenuBrowserWindow = () => {
         </div>
       )}
 
-      {/* Restaurant Details Modal */}
-      {showRestaurantModal && restaurantDetails && (
+      {/* Reservation Modal */}
+      {showReservationModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="modal modal-open">
-            <div className="modal-box w-full max-w-2xl max-h-[90vh] flex flex-col">
-              {/* Modal Header */}
-              <div className="sticky top-0 bg-base-100 pb-4 flex justify-between items-center border-b">
-                <h2 className="text-2xl font-bold">{restaurantDetails.RestaurantName}</h2>
-                <button
-                  onClick={closeModal}
-                  className="btn btn-ghost btn-sm btn-circle"
-                >
-                  <X size={20} />
-                </button>
+            <div className="modal-box w-full max-w-md">
+              <h3 className="font-bold text-lg mb-4">Make a Reservation</h3>
+              <form onSubmit={handleMakeReservation}>
+                <div className="form-control mb-4">
+                  <label className="label">
+                    <span className="label-text">Name</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="name"
+                    value={reservationForm.name}
+                    onChange={handleReservationChange}
+                    className="input input-bordered"
+                    required
+                  />
+                </div>
+                <div className="form-control mb-4">
+                  <label className="label">
+                    <span className="label-text">Address</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="address"
+                    value={reservationForm.address}
+                    onChange={handleReservationChange}
+                    className="input input-bordered"
+                    required
+                  />
+                </div>
+                <div className="form-control mb-4">
+                  <label className="label">
+                    <span className="label-text">Date</span>
+                  </label>
+                  <input
+                    type="date"
+                    name="date"
+                    value={reservationForm.date}
+                    onChange={handleReservationChange}
+                    className="input input-bordered"
+                    min={new Date().toISOString().split('T')[0]}
+                    required
+                  />
+                </div>
+                <div className="form-control mb-6">
+                  <label className="label">
+                    <span className="label-text">Number of People</span>
+                  </label>
+                  <input
+                    type="number"
+                    name="numberOfPeople"
+                    value={reservationForm.numberOfPeople}
+                    onChange={handleReservationChange}
+                    className="input input-bordered"
+                    min="1"
+                    required
+                  />
+                </div>
+                <div className="modal-action">
+                  <button
+                    type="button"
+                    onClick={closeReservationModal}
+                    className="btn btn-ghost"
+                  >
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn btn-primary">
+                    Submit Reservation
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Order Modal */}
+      {showOrderModal && selectedMenuItem && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="modal modal-open">
+            <div className="modal-box w-full max-w-md">
+              <h3 className="font-bold text-lg mb-4">Place Order</h3>
+
+              <div className="mb-4 p-3 bg-base-200 rounded-lg">
+                <h4 className="font-semibold">{selectedMenuItem.name}</h4>
+                <p className="text-sm text-gray-600">{selectedMenuItem.description}</p>
+                <p className="text-lg font-bold text-primary mt-2">
+                  ${selectedMenuItem.price || "N/A"}
+                </p>
               </div>
 
-              {/* Scrollable Content */}
-              <div className="flex-1 overflow-y-auto py-4">
-                {/* Restaurant Info */}
-                <div className="mb-6 pb-4 border-b">
-                  <div className="space-y-2">
-                    <p className="text-sm">
-                      <span className="font-semibold">Owner:</span> {restaurantDetails.OwnerName}
-                    </p>
-                    <p className="text-sm">
-                      <span className="font-semibold">Email:</span> {restaurantDetails.email}
-                    </p>
-                    <p className="text-sm">
-                      <span className="font-semibold">Restaurant Phone:</span>{" "}
-                      {restaurantDetails.RestaurantPhone}
-                    </p>
-                    <p className="text-sm">
-                      <span className="font-semibold">Owner Phone:</span>{" "}
-                      {restaurantDetails.OwnerPhone}
-                    </p>
-                    <p className="text-sm">
-                      <span className="font-semibold">Address:</span> {restaurantDetails.address}
-                    </p>
-                    {restaurantDetails.description && (
-                      <p className="text-sm">
-                        <span className="font-semibold">Description:</span>{" "}
-                        {restaurantDetails.description}
-                      </p>
-                    )}
-                  </div>
+              <form onSubmit={handleMakeOrder}>
+                <div className="form-control mb-4">
+                  <label className="label">
+                    <span className="label-text">Delivery Address</span>
+                  </label>
+                  <textarea
+                    name="deliveryAddress"
+                    value={orderForm.deliveryAddress}
+                    onChange={handleOrderChange}
+                    placeholder="Enter your full delivery address"
+                    className="textarea textarea-bordered h-20"
+                    required
+                  />
                 </div>
 
-                {/* Restaurant Menu Items */}
-                <div>
-                  <h3 className="text-xl font-semibold mb-4">Menu Items</h3>
-                  {restaurantMenuItems.length === 0 ? (
-                    <p className="text-gray-500 text-center py-8">
-                      No menu items available for this restaurant
-                    </p>
-                  ) : (
-                    <div className="space-y-3">
-                      {restaurantMenuItems.map((item, index) => (
-                        <div
-                          key={index}
-                          className="card bg-base-200 shadow-sm"
-                        >
-                          <div className="card-body p-4">
-                            <div className="flex justify-between items-start">
-                              <div className="flex-1">
-                                <h4 className="font-semibold text-lg">{item.name}</h4>
-                                {item.description && (
-                                  <p className="text-sm text-gray-600 mt-1">
-                                    {item.description}
-                                  </p>
-                                )}
-                              </div>
-                              <span className="text-lg font-bold text-primary ml-4">
-                                ${item.price || "N/A"}
-                              </span>
-                            </div>
-                            <div className="mt-3 flex justify-end">
-                              <button
-                                onClick={() => handleOrder(item)}
-                                className="btn btn-primary btn-sm gap-2"
-                              >
-                                <ShoppingCart size={16} />
-                                Order
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                <div className="modal-action">
+                  <button
+                    type="button"
+                    onClick={closeOrderModal}
+                    className="btn btn-ghost"
+                  >
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn btn-primary">
+                    Place Order
+                  </button>
                 </div>
-              </div>
-
-              {/* Modal Footer */}
-              <div className="border-t pt-4 flex justify-end gap-2">
-                <button
-                  onClick={closeModal}
-                  className="btn btn-outline"
-                >
-                  Close
-                </button>
-              </div>
+              </form>
             </div>
           </div>
         </div>
