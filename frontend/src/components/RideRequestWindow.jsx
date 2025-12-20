@@ -5,7 +5,7 @@ import { MapPin, Navigation, ArrowLeft } from "lucide-react";
 import toast from "react-hot-toast";
 
 // ---------------------------------- Keep maps disabled ---------------------------------------
-const ENABLE_MAPS = true;
+const ENABLE_MAPS = false;
 
 
 const libraries = ["places"];
