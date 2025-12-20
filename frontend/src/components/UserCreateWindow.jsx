@@ -48,7 +48,7 @@ const UserCreateWindow = () => {
     <div className="card w-full max-w-lg bg-base-100 shadow-xl border border-base-300">
       <div className="card-body">
         <h2 className="text-2xl font-bold text-center mb-6">
-          Register as User
+          Register as Customer
         </h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -119,7 +119,7 @@ const UserCreateWindow = () => {
             <input
               type="text"
               name="address"
-              placeholder="Enter your address (optional)"
+              placeholder="Enter your address"
               value={formData.address}
               onChange={handleChange}
               className="input input-bordered w-full focus:outline-none"
@@ -128,6 +128,14 @@ const UserCreateWindow = () => {
 
           <button type="submit" className="btn btn-primary w-full">
             Create User Account
+          </button>
+
+          <button 
+            type="button" 
+            onClick={() => navigate("/signup")}
+            className="btn btn-ghost w-full"
+          >
+            Back
           </button>
         </form>
       </div>

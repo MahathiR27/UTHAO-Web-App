@@ -21,10 +21,3 @@ export const getUser = () => {
     return null;
   }
 };
-
-// Get auth headers for API calls
-export const getAuthHeaders = () => {
-  return {
-    'Authorization': getToken()
-  };
-};
