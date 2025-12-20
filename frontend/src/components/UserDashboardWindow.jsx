@@ -327,6 +327,7 @@ const UserDashboardWindow = () => {
           <div className="divider"></div>
 
           <div className="flex justify-center gap-4">
+            <button className="btn btn-primary" onClick={() => navigate("/ride-request")}>Request a Ride</button>
             <button className="btn btn-primary" onClick={() => handleOpenCart()}>See Cart</button>
             <button className="btn btn-outline">View Order History</button>
             <button className="btn btn-outline">Browse Restaurants</button>
