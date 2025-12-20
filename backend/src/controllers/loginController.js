@@ -50,8 +50,8 @@ export const login = async (req, res) => {
         });
 
         // Try to send OTP to email (async, non-blocking)
-        sendOTP(tempEmail, otp).catch(emailErr => {
-            console.error("Email send failed:", emailErr);
+        sendOTP(tempEmail, otp).catch(e => {
+            console.error("OTP email sending failed");
         });
 
         // Always log OTP to console for development
@@ -96,10 +96,6 @@ export const verifyOTP = async (req, res) => {
             user = await User.findById(storedData.userId);
         } else {
             user = await Restaurant.findById(storedData.userId);
-        }
-
-        if (!user) {
-            return res.status(404).json({ message: "User not found" });
         }
 
         // Delete OTP after successful verification
