@@ -6,6 +6,7 @@ import { useNavigate } from "react-router";
 const UserCreateWindow = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
+    fullName: "",
     UserName: "",
     email: "",
     password: "",
@@ -31,6 +32,7 @@ const UserCreateWindow = () => {
       toast.success("User Registered Successfully! Please login to continue.");
 
       setFormData({
+        fullName: "",
         UserName: "",
         email: "",
         password: "",
@@ -54,12 +56,27 @@ const UserCreateWindow = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="label">
+              <span className="label-text">Full Name</span>
+            </label>
+            <input
+              type="text"
+              name="fullName"
+              placeholder="Enter your full name"
+              value={formData.fullName}
+              onChange={handleChange}
+              className="input input-bordered w-full focus:outline-none"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="label">
               <span className="label-text">User Name</span>
             </label>
             <input
               type="text"
               name="UserName"
-              placeholder="Enter your name"
+              placeholder="Enter your username"
               value={formData.UserName}
               onChange={handleChange}
               className="input input-bordered w-full focus:outline-none"
