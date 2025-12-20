@@ -13,6 +13,7 @@ const UserDashboardWindow = () => {
   const [loading, setLoading] = useState(true);
   const [editingProfile, setEditingProfile] = useState(false);
   const [editForm, setEditForm] = useState({
+    fullName: "",
     UserName: "",
     email: "",
     phone: "",
@@ -55,6 +56,7 @@ const UserDashboardWindow = () => {
     if (!editingProfile) {
       // Populate form with current user data when opening edit mode
       setEditForm({
+        fullName: user.fullName || "",
         UserName: user.UserName || "",
         email: user.email || "",
         phone: user.phone || "",
@@ -224,6 +226,17 @@ const UserDashboardWindow = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="label">
+                  <span className="label-text">Full Name</span>
+                </label>
+                <input
+                  name="fullName"
+                  value={editForm.fullName}
+                  onChange={handleEditFormChange}
+                  className="input input-bordered w-full"
+                />
+              </div>
+              <div>
+                <label className="label">
                   <span className="label-text">User Name</span>
                 </label>
                 <input
@@ -282,17 +295,21 @@ const UserDashboardWindow = () => {
             <div className="avatar placeholder">
               <div className="bg-neutral text-neutral-content rounded-full w-24">
                 <span className="text-3xl">
-                  {user.UserName ? user.UserName.charAt(0).toUpperCase() : "U"}
+                  {user.fullName ? user.fullName.charAt(0).toUpperCase() : "U"}
                 </span>
               </div>
             </div>
           </div>
 
           <h3 className="text-2xl font-bold text-center mb-6">
-            {user.UserName}
+            {user.fullName || user.UserName}
           </h3>
 
           <div className="space-y-3 mb-6">
+            <div className="flex items-start">
+              <div className="font-semibold w-24">Username:</div>
+              <div className="flex-1">{user.UserName}</div>
+            </div>
             <div className="flex items-start">
               <div className="font-semibold w-24">Email:</div>
               <div className="flex-1">{user.email}</div>

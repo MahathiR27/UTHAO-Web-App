@@ -1,20 +1,21 @@
 import User from "../modules/userReg.js";
 import Restaurant from "../modules/restaurantReg.js";
 import Order from "../modules/orderSchema.js";
+import Reservation from "../modules/reservationSchema.js";
 
 // ----------------------------------------- REGISTRATION -----------------------------------------
 export const createUser = async (req, res) => {
     try {
         
-        const { UserName, email, password, phone, address } = req.body;
+        const { fullName, UserName, email, password, phone, address } = req.body;
 
-        if (!UserName || !email || !password || !phone) {
+        if (!fullName || !UserName || !email || !password || !phone) {
             return res.status(400).json({message: "All fields are required"});
         }
 
         const newUser = new User(
             {
-                UserName, email, password, phone, address
+                fullName, UserName, email, password, phone, address
             }
         );
         
@@ -37,7 +38,10 @@ export const getUser = async (req, res) => {
         // Get user ID from JWT token
         const userId = req.user.id;
 
-        const user = await User.findById(userId).lean();
+        const user = await User.findById(userId)
+            .populate('reservations')
+            .populate('orders')
+            .lean();
         if (!user) return res.status(404).json({ message: "User not found" });
 
         return res.status(200).json({ user });
@@ -107,31 +111,31 @@ export const getUserCart = async (req, res) => {
     // Get user ID from JWT token
     const userId = req.user.id;
 
-    // Get user with orders
-    const user = await User.findById(userId);
+    // Get user with populated orders
+    const user = await User.findById(userId).populate('orders');
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Get pending orders with menu item details
+    // Filter pending orders and get menu item details
     const cartOrders = [];
 
-    for (const userOrder of user.orders || []) {
-      if (userOrder.status === 'pending') {
+    for (const order of user.orders || []) {
+      if (order.status === 'pending') {
         // Get restaurant to find menu item name
-        const restaurant = await Restaurant.findById(userOrder.restaurantId);
+        const restaurant = await Restaurant.findById(order.restaurantId);
         if (restaurant) {
           // Find menu item by ID (generated as restaurantId-index)
-          const menuItemIndex = userOrder.menuItemId.split('-').pop();
+          const menuItemIndex = order.menuItemId.split('-').pop();
           const menuItem = restaurant.menu ? restaurant.menu[parseInt(menuItemIndex)] : null;
 
           cartOrders.push({
-            _id: userOrder.orderId,
+            _id: order._id,
             menuItemName: menuItem ? menuItem.name : 'Unknown Item',
             restaurantName: restaurant.RestaurantName,
-            price: userOrder.price,
-            deliveryAddress: userOrder.deliveryAddress,
-            date: userOrder.date
+            price: order.price,
+            deliveryAddress: order.deliveryAddress,
+            date: order.date || order.createdAt
           });
         }
       }
@@ -165,14 +169,14 @@ export const cancelOrder = async (req, res) => {
     // Remove from user's orders array
     const user = await User.findById(order.userId);
     if (user) {
-      user.orders = user.orders.filter(o => !o.orderId.equals(orderId));
+      user.orders = user.orders.filter(id => !id.equals(orderId));
       await user.save();
     }
 
     // Remove from restaurant's orders array
     const restaurant = await Restaurant.findById(order.restaurantId);
     if (restaurant) {
-      restaurant.orders = restaurant.orders.filter(o => !o.orderId.equals(orderId));
+      restaurant.orders = restaurant.orders.filter(id => !id.equals(orderId));
       await restaurant.save();
     }
 
@@ -194,15 +198,14 @@ export const confirmUserOrders = async (req, res) => {
     // Get user ID from JWT token
     const userId = req.user.id;
 
-    const user = await User.findById(userId);
+    const user = await User.findById(userId).populate('orders');
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Update all pending orders to confirmed
-    const orderIds = user.orders
-      .filter(order => order.status === 'pending')
-      .map(order => order.orderId);
+    // Get pending order IDs
+    const pendingOrders = user.orders.filter(order => order.status === 'pending');
+    const orderIds = pendingOrders.map(order => order._id);
 
     // Update Order documents
     await Order.updateMany(
@@ -210,31 +213,9 @@ export const confirmUserOrders = async (req, res) => {
       { status: 'confirmed' }
     );
 
-    // Update user's orders array
-    user.orders = user.orders.map(order => 
-      order.status === 'pending' 
-        ? { ...order.toObject(), status: 'confirmed' }
-        : order
-    );
-    await user.save();
-
-    // Update restaurants' orders arrays
-    for (const order of user.orders) {
-      if (order.status === 'confirmed') {
-        const restaurant = await Restaurant.findById(order.restaurantId);
-        if (restaurant) {
-          restaurant.orders = restaurant.orders.map(rOrder =>
-            rOrder.orderId.equals(order.orderId)
-              ? { ...rOrder.toObject(), status: 'confirmed' }
-              : rOrder
-          );
-          await restaurant.save();
-        }
-      }
-    }
-
     return res.status(200).json({
-      message: "All orders confirmed successfully"
+      message: "All orders confirmed successfully",
+      confirmedCount: orderIds.length
     });
   } catch (err) {
     console.error(err);

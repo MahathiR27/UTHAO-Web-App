@@ -15,9 +15,9 @@ const SignupWindow = () => {
             Customer
           </Link>
 
-          <Link to="/create-rider" className="btn btn-secondary w-full gap-2 text-white">
+          <Link to="/create-driver" className="btn btn-secondary w-full gap-2 text-white">
             <Bike className="w-5 h-5" />
-            Rider
+            Driver
           </Link>
 
           <Link to="/create-restaurant" className="btn btn-accent w-full gap-2 text-white">

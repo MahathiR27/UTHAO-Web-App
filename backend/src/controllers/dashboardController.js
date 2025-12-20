@@ -1,6 +1,7 @@
 import Restaurant from "../modules/restaurantReg.js";
 import User from "../modules/userReg.js";
 import Order from "../modules/orderSchema.js";
+import Reservation from "../modules/reservationSchema.js";
 
 // Get menu items for a specific restaurant
 export const getRestaurantMenuItems = async (req, res) => {
@@ -57,7 +58,7 @@ export const makeReservation = async (req, res) => {
     }
 
     // Get restaurant
-    const restaurant = await Restaurant.findById(restaurantId);
+    const restaurant = await Restaurant.findById(restaurantId).populate('reservations');
     if (!restaurant) {
       return res.status(404).json({ message: "Restaurant not found" });
     }
@@ -73,39 +74,30 @@ export const makeReservation = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Create reservation object
-    const reservation = {
+    // Create new Reservation document
+    const newReservation = new Reservation({
       userId,
-      name,
-      address,
-      date: new Date(date),
-      numberOfPeople: peopleCount,
-      status: 'pending',
-      createdAt: new Date()
-    };
-
-    // Add to restaurant reservations
-    restaurant.reservations.push(reservation);
-    await restaurant.save();
-
-    // Add to user reservations
-    user.reservations.push({
       restaurantId,
       name,
       address,
       date: new Date(date),
       numberOfPeople: peopleCount,
-      status: 'pending',
-      createdAt: new Date()
+      status: 'pending'
     });
+
+    const savedReservation = await newReservation.save();
+
+    // Add reservation ID to restaurant
+    restaurant.reservations.push(savedReservation._id);
+    await restaurant.save();
+
+    // Add reservation ID to user
+    user.reservations.push(savedReservation._id);
     await user.save();
 
     return res.status(201).json({
       message: "Reservation created successfully",
-      reservation: {
-        id: restaurant.reservations[restaurant.reservations.length - 1]._id,
-        ...reservation
-      }
+      reservation: savedReservation
     });
   } catch (err) {
     console.error(err);
@@ -131,41 +123,23 @@ export const updateReservationStatus = async (req, res) => {
       return res.status(400).json({ message: "Invalid status. Must be pending, confirmed, or cancelled" });
     }
 
-    // Get restaurant
-    const restaurant = await Restaurant.findById(restaurantId);
-    if (!restaurant) {
-      return res.status(404).json({ message: "Restaurant not found" });
-    }
-
-    // Find and update reservation in restaurant
-    const reservationIndex = restaurant.reservations.findIndex(r => r._id.toString() === reservationId);
-    if (reservationIndex === -1) {
+    // Find and update the Reservation document
+    const reservation = await Reservation.findById(reservationId);
+    if (!reservation) {
       return res.status(404).json({ message: "Reservation not found" });
     }
 
-    const oldStatus = restaurant.reservations[reservationIndex].status;
-    restaurant.reservations[reservationIndex].status = status;
-    await restaurant.save();
-
-    // Update reservation in user document
-    const userId = restaurant.reservations[reservationIndex].userId;
-    const user = await User.findById(userId);
-    if (user) {
-      const userReservationIndex = user.reservations.findIndex(r => 
-        r.restaurantId.toString() === restaurantId && 
-        r.date.toISOString() === restaurant.reservations[reservationIndex].date.toISOString() &&
-        r.name === restaurant.reservations[reservationIndex].name
-      );
-      
-      if (userReservationIndex !== -1) {
-        user.reservations[userReservationIndex].status = status;
-        await user.save();
-      }
+    // Verify it belongs to the restaurant
+    if (reservation.restaurantId.toString() !== restaurantId) {
+      return res.status(403).json({ message: "Reservation does not belong to this restaurant" });
     }
+
+    reservation.status = status;
+    await reservation.save();
 
     return res.status(200).json({
       message: "Reservation status updated successfully",
-      restaurant
+      reservation
     });
   } catch (err) {
     console.error(err);
@@ -178,7 +152,7 @@ export const makeOrder = async (req, res) => {
   try {
     // Get user ID from JWT token
     const userId = req.user.id;
-    const { restaurantId, menuItemId, price, deliveryAddress } = req.body;
+    const { restaurantId, menuItemId, price, deliveryAddress, date } = req.body;
 
     if (!restaurantId || !menuItemId || !price || !deliveryAddress) {
       return res.status(400).json({ message: "All order fields are required" });
@@ -196,11 +170,12 @@ export const makeOrder = async (req, res) => {
       return res.status(404).json({ message: "Restaurant not found" });
     }
 
-    // Create the order
+    // Create the order document
     const newOrder = new Order({
       userId,
       restaurantId,
       menuItemId,
+      date: date ? new Date(date) : new Date(),
       price,
       deliveryAddress,
       status: 'pending'
@@ -208,30 +183,12 @@ export const makeOrder = async (req, res) => {
 
     const savedOrder = await newOrder.save();
 
-    // Add order to user's orders array
-    user.orders.push({
-      orderId: savedOrder._id,
-      restaurantId,
-      menuItemId,
-      date: savedOrder.createdAt,
-      price,
-      deliveryAddress,
-      status: 'pending'
-    });
-
+    // Add order ID to user's orders array
+    user.orders.push(savedOrder._id);
     await user.save();
 
-    // Add order to restaurant's orders array
-    restaurant.orders.push({
-      orderId: savedOrder._id,
-      userId,
-      menuItemId,
-      date: savedOrder.createdAt,
-      price,
-      deliveryAddress,
-      status: 'pending'
-    });
-
+    // Add order ID to restaurant's orders array
+    restaurant.orders.push(savedOrder._id);
     await restaurant.save();
 
     return res.status(201).json({

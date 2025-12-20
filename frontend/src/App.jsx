@@ -8,6 +8,8 @@ import RestaurantDashboardPage from "./pages/RestaurantDashboardPage";
 import SignupPage from "./pages/SignupPage";
 import UserCreatePage from "./pages/UserCreatePage";
 import MenuBrowserPage from "./pages/MenuBrowserPage";
+import DriverCreatePage from "./pages/DriverCreatePage";
+import DriverDashboardPage from "./pages/DriverDashboardPage";
 
 const App = () => {
   return (
@@ -19,6 +21,8 @@ const App = () => {
         <Route path="/create-restaurant" element={<RestaurantCreatePage />} />
         <Route path="/restaurant-dashboard" element={<RestaurantDashboardPage />} />
         <Route path="/create-user" element={<UserCreatePage />} />
+        <Route path="/create-driver" element={<DriverCreatePage />} />
+        <Route path="/driver-dashboard" element={<DriverDashboardPage />} />
         <Route path="/menu-browser" element={<MenuBrowserPage />} />
       </Routes>
     </div>
