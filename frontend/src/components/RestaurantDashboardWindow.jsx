@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { Calendar, Check, X } from "lucide-react";
+import { Calendar, Check, X, Tag } from "lucide-react";
 import { getUser, getToken, removeToken } from "../utils/authUtils";
 
 const RestaurantDashboardWindow = () => {
@@ -20,6 +20,12 @@ const RestaurantDashboardWindow = () => {
   const [reservationFilter, setReservationFilter] = useState("all"); // "all", "pending", "confirmed"
   const [selectedReservation, setSelectedReservation] = useState(null);
   const [showReservationModal, setShowReservationModal] = useState(false);
+  
+  // Offer management states
+  const [showOfferForm, setShowOfferForm] = useState(false);
+  const [offerForm, setOfferForm] = useState({ title: "", percentage: "", menuItemIndices: [] });
+  const [editingOfferIndex, setEditingOfferIndex] = useState(null);
+  const [editOfferForm, setEditOfferForm] = useState({ title: "", percentage: "", menuItemIndices: [] });
 
   // Fetch restaurant data on mount
   useEffect(() => {
@@ -182,6 +188,103 @@ const RestaurantDashboardWindow = () => {
     return restaurant.reservations.filter(r => r.status === reservationFilter);
   };
 
+  // Offer handlers
+  const handleAddOffer = async (e) => {
+    e.preventDefault();
+
+    if (!offerForm.title.trim() || !offerForm.percentage) {
+      toast.error("Title and percentage are required");
+      return;
+    }
+
+    try {
+      const response = await axios({
+        method: 'post',
+        url: "http://localhost:5001/api/dashboard/add-offer",
+        data: offerForm,
+        headers: { token: getToken() }
+      });
+
+      setRestaurant({ ...restaurant, offers: response.data.offers });
+      setOfferForm({ title: "", percentage: "", menuItemIndices: [] });
+      setShowOfferForm(false);
+      toast.success("Offer added successfully");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to add offer");
+      console.error(error);
+    }
+  };
+
+  const startEditOffer = (index) => {
+    setEditingOfferIndex(index);
+    const offer = restaurant.offers[index];
+    setEditOfferForm({
+      title: offer.title || "",
+      percentage: offer.percentage || "",
+      menuItemIndices: offer.menuItemIndices || []
+    });
+  };
+
+  const cancelEditOffer = () => {
+    setEditingOfferIndex(null);
+    setEditOfferForm({ title: "", percentage: "", menuItemIndices: [] });
+  };
+
+  const handleUpdateOffer = async (e, index) => {
+    e.preventDefault();
+    try {
+      const response = await axios({
+        method: 'put',
+        url: `http://localhost:5001/api/dashboard/update-offer/${index}`,
+        data: editOfferForm,
+        headers: { token: getToken() }
+      });
+      setRestaurant({ ...restaurant, offers: response.data.offers });
+      setEditingOfferIndex(null);
+      toast.success("Offer updated successfully");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to update offer");
+      console.error(error);
+    }
+  };
+
+  const handleDeleteOffer = async (index) => {
+    try {
+      const response = await axios({
+        method: 'delete',
+        url: `http://localhost:5001/api/dashboard/delete-offer/${index}`,
+        headers: { token: getToken() }
+      });
+      setRestaurant({ ...restaurant, offers: response.data.offers });
+      toast.success("Offer deleted successfully");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to delete offer");
+      console.error(error);
+    }
+  };
+
+  const toggleMenuItemInOffer = (menuIndex, isEditing = false) => {
+    if (isEditing) {
+      const currentIndices = [...editOfferForm.menuItemIndices];
+      const indexPos = currentIndices.indexOf(menuIndex);
+      if (indexPos > -1) {
+        currentIndices.splice(indexPos, 1);
+      } else {
+        currentIndices.push(menuIndex);
+      }
+      setEditOfferForm({ ...editOfferForm, menuItemIndices: currentIndices });
+    } else {
+      const currentIndices = [...offerForm.menuItemIndices];
+      const indexPos = currentIndices.indexOf(menuIndex);
+      if (indexPos > -1) {
+        currentIndices.splice(indexPos, 1);
+      } else {
+        currentIndices.push(menuIndex);
+      }
+      setOfferForm({ ...offerForm, menuItemIndices: currentIndices });
+    }
+  };
+
   const handleLogout = () => {
     removeToken();
     toast.success("Logged out successfully");
@@ -331,6 +434,180 @@ const RestaurantDashboardWindow = () => {
       </div>
     </div>
 
+    {/* Offers Card */}
+    <div className="card w-full bg-base-100 shadow-xl border border-base-300">
+      <div className="card-body">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold">Offer Management</h2>
+          <button
+            className="btn btn-sm btn-secondary"
+            onClick={() => setShowOfferForm(!showOfferForm)}
+          >
+            {showOfferForm ? "Cancel" : "+ Add Offer"}
+          </button>
+        </div>
+
+        {/* Add Offer Form */}
+        {showOfferForm && (
+          <form onSubmit={handleAddOffer} className="bg-base-200 p-4 rounded-lg mb-6">
+            <div className="space-y-3">
+              <div>
+                <label className="label">
+                  <span className="label-text">Offer Title</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., Weekend Special"
+                  value={offerForm.title}
+                  onChange={(e) => setOfferForm({ ...offerForm, title: e.target.value })}
+                  className="input input-bordered w-full focus:outline-none"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="label">
+                  <span className="label-text">Discount Percentage (0-100)</span>
+                </label>
+                <input
+                  type="number"
+                  placeholder="e.g., 20"
+                  min="0"
+                  max="100"
+                  value={offerForm.percentage}
+                  onChange={(e) => setOfferForm({ ...offerForm, percentage: e.target.value })}
+                  className="input input-bordered w-full focus:outline-none"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="label">
+                  <span className="label-text">Select Menu Items (check to include in offer)</span>
+                </label>
+                <div className="bg-base-100 p-3 rounded-lg max-h-48 overflow-y-auto space-y-2">
+                  {restaurant.menu && restaurant.menu.length > 0 ? (
+                    restaurant.menu.map((item, index) => (
+                      <label key={index} className="flex items-center gap-2 cursor-pointer hover:bg-base-200 p-2 rounded">
+                        <input
+                          type="checkbox"
+                          className="checkbox checkbox-sm"
+                          checked={offerForm.menuItemIndices.includes(index)}
+                          onChange={() => toggleMenuItemInOffer(index, false)}
+                        />
+                        <span className="flex-1">{item.name} - ${item.price}</span>
+                      </label>
+                    ))
+                  ) : (
+                    <p className="text-sm text-gray-500">No menu items available. Add menu items first.</p>
+                  )}
+                </div>
+              </div>
+
+              <button type="submit" className="btn btn-secondary w-full">
+                <Tag size={16} />
+                Add Offer
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* Offers List */}
+        <div className="space-y-3">
+          {!restaurant.offers || restaurant.offers.length === 0 ? (
+            <div className="alert alert-info">
+              <span>No offers yet. Add one to attract more customers!</span>
+            </div>
+          ) : (
+            restaurant.offers.map((offer, index) => (
+              <div key={index} className="bg-base-200 p-4 rounded-lg">
+                {editingOfferIndex === index ? (
+                  <form onSubmit={(e) => handleUpdateOffer(e, index)} className="space-y-3">
+                    <div>
+                      <label className="label"><span className="label-text">Title</span></label>
+                      <input
+                        value={editOfferForm.title}
+                        onChange={(e) => setEditOfferForm({ ...editOfferForm, title: e.target.value })}
+                        className="input input-bordered w-full"
+                      />
+                    </div>
+                    <div>
+                      <label className="label"><span className="label-text">Percentage</span></label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={editOfferForm.percentage}
+                        onChange={(e) => setEditOfferForm({ ...editOfferForm, percentage: e.target.value })}
+                        className="input input-bordered w-full"
+                      />
+                    </div>
+                    <div>
+                      <label className="label"><span className="label-text">Menu Items</span></label>
+                      <div className="bg-base-100 p-3 rounded-lg max-h-40 overflow-y-auto space-y-2">
+                        {restaurant.menu && restaurant.menu.map((item, menuIndex) => (
+                          <label key={menuIndex} className="flex items-center gap-2 cursor-pointer hover:bg-base-200 p-2 rounded">
+                            <input
+                              type="checkbox"
+                              className="checkbox checkbox-sm"
+                              checked={editOfferForm.menuItemIndices.includes(menuIndex)}
+                              onChange={() => toggleMenuItemInOffer(menuIndex, true)}
+                            />
+                            <span className="flex-1">{item.name} - ${item.price}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button type="submit" className="btn btn-sm btn-success">Save</button>
+                      <button type="button" onClick={cancelEditOffer} className="btn btn-sm">Cancel</button>
+                    </div>
+                  </form>
+                ) : (
+                  <div>
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex-1">
+                        <h4 className="font-bold text-lg flex items-center gap-2">
+                          <Tag size={18} className="text-secondary" />
+                          {offer.title}
+                        </h4>
+                        <p className="text-2xl font-bold text-secondary mt-1">
+                          {offer.percentage}% OFF
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button className="btn btn-sm btn-outline" onClick={() => startEditOffer(index)}>
+                          Edit
+                        </button>
+                        <button className="btn btn-sm btn-error" onClick={() => handleDeleteOffer(index)}>
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                    <div className="mt-3">
+                      <p className="text-sm font-semibold mb-2">Applies to:</p>
+                      {offer.menuItemIndices && offer.menuItemIndices.length > 0 ? (
+                        <div className="flex flex-wrap gap-2">
+                          {offer.menuItemIndices.map((menuIndex) => (
+                            restaurant.menu[menuIndex] && (
+                              <span key={menuIndex} className="badge badge-outline">
+                                {restaurant.menu[menuIndex].name}
+                              </span>
+                            )
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-500">No specific items selected</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
     {/* Menu Card */}
     <div className="card w-full bg-base-100 shadow-xl border border-base-300">
       <div className="card-body">
@@ -448,7 +725,6 @@ const RestaurantDashboardWindow = () => {
         </div>
       </div>
     </div>
-
     {/* Reservations Card */}
     <div className="card w-full bg-base-100 shadow-xl border border-base-300">
       <div className="card-body">
