@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const orderSchema = new mongoose.Schema({
+const reservationSchema = new mongoose.Schema({
     userId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'userReg',
@@ -11,21 +11,17 @@ const orderSchema = new mongoose.Schema({
         ref: 'restaurantReg',
         required: true
     },
-    menuItemId: {
+    name: {
         type: String,
         required: true
     },
-    price: {
+    numberOfPeople: {
         type: Number,
-        required: true
-    },
-    deliveryAddress: {
-        type: String,
         required: true
     },
     status: {
         type: String,
-        enum: ['pending', 'confirmed', 'preparing', 'delivering', 'delivered', 'cancelled'],
+        enum: ['pending', 'confirmed', 'cancelled'],
         default: 'pending'
     },
     createdAt: {
@@ -34,6 +30,6 @@ const orderSchema = new mongoose.Schema({
     }
 });
 
-const Order = mongoose.model('Order', orderSchema);
+const Reservation = mongoose.model('Reservation', reservationSchema);
 
-export default Order;
+export default Reservation;

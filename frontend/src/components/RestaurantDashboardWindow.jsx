@@ -249,8 +249,6 @@ const RestaurantDashboardWindow = () => {
   };
 
   const handleDeleteOffer = async (index) => {
-    if (!confirm("Are you sure you want to delete this offer?")) return;
-
     try {
       const response = await axios({
         method: 'delete',
@@ -436,123 +434,6 @@ const RestaurantDashboardWindow = () => {
       </div>
     </div>
 
-    {/* Menu Card */}
-    <div className="card w-full bg-base-100 shadow-xl border border-base-300">
-      <div className="card-body">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold">Menu Management</h2>
-          <button
-            className="btn btn-sm btn-primary"
-            onClick={() => setShowForm(!showForm)}
-          >
-            {showForm ? "Cancel" : "+ Add Menu Item"}
-          </button>
-        </div>
-
-        {/* Add Menu Form */}
-        {showForm && (
-          <form onSubmit={handleAddMenuItem} className="bg-base-200 p-4 rounded-lg mb-6">
-            <div className="space-y-3">
-              <div>
-                <label className="label">
-                  <span className="label-text">Item Name</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g., Margherita Pizza"
-                  value={menuItem.name}
-                  onChange={(e) => setMenuItem({ ...menuItem, name: e.target.value })}
-                  className="input input-bordered w-full focus:outline-none"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="label">
-                    <span className="label-text">Price</span>
-                  </label>
-                  <input
-                    type="number"
-                    placeholder="0.00"
-                    step="0.01"
-                    min="0"
-                    value={menuItem.price}
-                    onChange={(e) => setMenuItem({ ...menuItem, price: e.target.value })}
-                    className="input input-bordered w-full focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="label">
-                    <span className="label-text">Description</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Optional description"
-                    value={menuItem.description}
-                    onChange={(e) => setMenuItem({ ...menuItem, description: e.target.value })}
-                    className="input input-bordered w-full focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <button type="submit" className="btn btn-success w-full">
-                Add Menu Item
-              </button>
-            </div>
-          </form>
-        )}
-
-        {/* Menu List */}
-        <div className="space-y-3">
-          {!restaurant.menu || restaurant.menu.length === 0 ? (
-            <div className="alert alert-info">
-              <span>No menu items yet. Add one to get started!</span>
-            </div>
-          ) : (
-            restaurant.menu.map((item, index) => (
-              <div key={index} className="bg-base-200 p-4 rounded-lg">
-                {editingIndex === index ? (
-                  <form onSubmit={(e) => handleUpdateMenu(e, index)} className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
-                    <div>
-                      <label className="label"><span className="label-text">Name</span></label>
-                      <input value={editMenuForm.name} onChange={(e) => setEditMenuForm((f) => ({ ...f, name: e.target.value }))} className="input input-bordered w-full" />
-                    </div>
-                    <div>
-                      <label className="label"><span className="label-text">Price</span></label>
-                      <input type="number" value={editMenuForm.price} onChange={(e) => setEditMenuForm((f) => ({ ...f, price: e.target.value }))} className="input input-bordered w-full" />
-                    </div>
-                    <div>
-                      <label className="label"><span className="label-text">Description</span></label>
-                      <input value={editMenuForm.description} onChange={(e) => setEditMenuForm((f) => ({ ...f, description: e.target.value }))} className="input input-bordered w-full" />
-                    </div>
-                    <div className="md:col-span-3 flex gap-2">
-                      <button type="submit" className="btn btn-sm btn-success">Save</button>
-                      <button type="button" onClick={cancelEditMenu} className="btn btn-sm">Cancel</button>
-                    </div>
-                  </form>
-                ) : (
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h4 className="font-bold text-lg">{item.name}</h4>
-                      {item.description && (
-                        <p className="text-sm text-gray-600">{item.description}</p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="text-xl font-bold text-primary">
-                        ${parseFloat(item.price || 0).toFixed(2)}
-                      </div>
-                      <button className="btn btn-sm" onClick={() => startEditMenu(index)}>Edit</button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-    </div>
     {/* Offers Card */}
     <div className="card w-full bg-base-100 shadow-xl border border-base-300">
       <div className="card-body">
@@ -718,6 +599,123 @@ const RestaurantDashboardWindow = () => {
                       ) : (
                         <p className="text-sm text-gray-500">No specific items selected</p>
                       )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+    {/* Menu Card */}
+    <div className="card w-full bg-base-100 shadow-xl border border-base-300">
+      <div className="card-body">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold">Menu Management</h2>
+          <button
+            className="btn btn-sm btn-primary"
+            onClick={() => setShowForm(!showForm)}
+          >
+            {showForm ? "Cancel" : "+ Add Menu Item"}
+          </button>
+        </div>
+
+        {/* Add Menu Form */}
+        {showForm && (
+          <form onSubmit={handleAddMenuItem} className="bg-base-200 p-4 rounded-lg mb-6">
+            <div className="space-y-3">
+              <div>
+                <label className="label">
+                  <span className="label-text">Item Name</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., Margherita Pizza"
+                  value={menuItem.name}
+                  onChange={(e) => setMenuItem({ ...menuItem, name: e.target.value })}
+                  className="input input-bordered w-full focus:outline-none"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label">
+                    <span className="label-text">Price</span>
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="0.00"
+                    step="0.01"
+                    min="0"
+                    value={menuItem.price}
+                    onChange={(e) => setMenuItem({ ...menuItem, price: e.target.value })}
+                    className="input input-bordered w-full focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="label">
+                    <span className="label-text">Description</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Optional description"
+                    value={menuItem.description}
+                    onChange={(e) => setMenuItem({ ...menuItem, description: e.target.value })}
+                    className="input input-bordered w-full focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <button type="submit" className="btn btn-success w-full">
+                Add Menu Item
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* Menu List */}
+        <div className="space-y-3">
+          {!restaurant.menu || restaurant.menu.length === 0 ? (
+            <div className="alert alert-info">
+              <span>No menu items yet. Add one to get started!</span>
+            </div>
+          ) : (
+            restaurant.menu.map((item, index) => (
+              <div key={index} className="bg-base-200 p-4 rounded-lg">
+                {editingIndex === index ? (
+                  <form onSubmit={(e) => handleUpdateMenu(e, index)} className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                    <div>
+                      <label className="label"><span className="label-text">Name</span></label>
+                      <input value={editMenuForm.name} onChange={(e) => setEditMenuForm((f) => ({ ...f, name: e.target.value }))} className="input input-bordered w-full" />
+                    </div>
+                    <div>
+                      <label className="label"><span className="label-text">Price</span></label>
+                      <input type="number" value={editMenuForm.price} onChange={(e) => setEditMenuForm((f) => ({ ...f, price: e.target.value }))} className="input input-bordered w-full" />
+                    </div>
+                    <div>
+                      <label className="label"><span className="label-text">Description</span></label>
+                      <input value={editMenuForm.description} onChange={(e) => setEditMenuForm((f) => ({ ...f, description: e.target.value }))} className="input input-bordered w-full" />
+                    </div>
+                    <div className="md:col-span-3 flex gap-2">
+                      <button type="submit" className="btn btn-sm btn-success">Save</button>
+                      <button type="button" onClick={cancelEditMenu} className="btn btn-sm">Cancel</button>
+                    </div>
+                  </form>
+                ) : (
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h4 className="font-bold text-lg">{item.name}</h4>
+                      {item.description && (
+                        <p className="text-sm text-gray-600">{item.description}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="text-xl font-bold text-primary">
+                        ${parseFloat(item.price || 0).toFixed(2)}
+                      </div>
+                      <button className="btn btn-sm" onClick={() => startEditMenu(index)}>Edit</button>
                     </div>
                   </div>
                 )}

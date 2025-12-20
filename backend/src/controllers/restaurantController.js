@@ -95,7 +95,10 @@ export const getRestaurant = async (req, res) => {
         // Get restaurant ID from JWT token
         const restaurantId = req.user.id;
 
-        const restaurant = await Restaurant.findById(restaurantId).lean();
+        const restaurant = await Restaurant.findById(restaurantId)
+            .populate('reservations')
+            .populate('orders')
+            .lean();
         if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
 
         return res.status(200).json({ restaurant });
