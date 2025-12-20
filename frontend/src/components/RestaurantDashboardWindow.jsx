@@ -593,7 +593,6 @@ const RestaurantDashboardWindow = () => {
                   placeholder="e.g., 20"
                   min="0"
                   max="100"
-                  step="0.01"
                   value={offerForm.percentage}
                   onChange={(e) => setOfferForm({ ...offerForm, percentage: e.target.value })}
                   className="input input-bordered w-full focus:outline-none"
@@ -657,7 +656,6 @@ const RestaurantDashboardWindow = () => {
                         type="number"
                         min="0"
                         max="100"
-                        step="0.01"
                         value={editOfferForm.percentage}
                         onChange={(e) => setEditOfferForm({ ...editOfferForm, percentage: e.target.value })}
                         className="input input-bordered w-full"

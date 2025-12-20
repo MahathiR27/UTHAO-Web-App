@@ -198,22 +198,8 @@ export const updateOffer = async (req, res) => {
         if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
 
         const idx = Number(index);
-        if (Number.isNaN(idx) || !restaurant.offers || idx < 0 || idx >= restaurant.offers.length) {
+        if (!restaurant.offers || !restaurant.offers[idx]) {
             return res.status(400).json({ message: "Invalid offer index" });
-        }
-
-        // Validate percentage if provided
-        if (percentage !== undefined && (percentage < 0 || percentage > 100)) {
-            return res.status(400).json({ message: "Percentage must be between 0 and 100" });
-        }
-
-        // Validate menu item indices if provided
-        if (menuItemIndices) {
-            for (const menuIndex of menuItemIndices) {
-                if (menuIndex < 0 || menuIndex >= (restaurant.menu?.length || 0)) {
-                    return res.status(400).json({ message: `Invalid menu item index: ${menuIndex}` });
-                }
-            }
         }
 
         if (title !== undefined) restaurant.offers[idx].title = title;
@@ -238,7 +224,7 @@ export const deleteOffer = async (req, res) => {
         if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
 
         const idx = Number(index);
-        if (Number.isNaN(idx) || !restaurant.offers || idx < 0 || idx >= restaurant.offers.length) {
+        if (!restaurant.offers || !restaurant.offers[idx]) {
             return res.status(400).json({ message: "Invalid offer index" });
         }
 
