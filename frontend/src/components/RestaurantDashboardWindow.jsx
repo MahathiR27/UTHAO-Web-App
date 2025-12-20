@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { Calendar, Check, X, Tag } from "lucide-react";
-import { getUser, getAuthHeaders, removeToken } from "../utils/authUtils";
+import { getUser, getToken, removeToken } from "../utils/authUtils";
 
 const RestaurantDashboardWindow = () => {
   const navigate = useNavigate();
@@ -40,7 +40,7 @@ const RestaurantDashboardWindow = () => {
         const response = await axios({
           method: 'get',
           url: "http://localhost:5001/api/dashboard/get-restaurant",
-          headers: getAuthHeaders()
+          headers: { token: getToken() }
         });
         setRestaurant(response.data.restaurant);
         setProfileForm(response.data.restaurant);
@@ -73,7 +73,7 @@ const RestaurantDashboardWindow = () => {
           price: menuItem.price || 0,
           description: menuItem.description,
         },
-        headers: getAuthHeaders()
+        headers: { token: getToken() }
       });
 
       // Update local restaurant state with new menu
@@ -108,7 +108,7 @@ const RestaurantDashboardWindow = () => {
         method: 'put',
         url: "http://localhost:5001/api/dashboard/update-restaurant",
         data: profileForm,
-        headers: getAuthHeaders()
+        headers: { token: getToken() }
       });
       setRestaurant(res.data.restaurant);
       setEditingProfile(false);
@@ -137,7 +137,7 @@ const RestaurantDashboardWindow = () => {
         method: 'put',
         url: `http://localhost:5001/api/dashboard/update-menu/${index}`,
         data: editMenuForm,
-        headers: getAuthHeaders()
+        headers: { token: getToken() }
       });
       setRestaurant((r) => ({ ...r, menu: res.data.menu }));
       setEditingIndex(null);
@@ -157,7 +157,7 @@ const RestaurantDashboardWindow = () => {
           reservationId,
           status: newStatus
         },
-        headers: getAuthHeaders()
+        headers: { token: getToken() }
       });
 
       // Update local restaurant state
@@ -202,7 +202,7 @@ const RestaurantDashboardWindow = () => {
         method: 'post',
         url: "http://localhost:5001/api/dashboard/add-offer",
         data: offerForm,
-        headers: getAuthHeaders()
+        headers: { token: getToken() }
       });
 
       setRestaurant({ ...restaurant, offers: response.data.offers });
@@ -237,7 +237,7 @@ const RestaurantDashboardWindow = () => {
         method: 'put',
         url: `http://localhost:5001/api/dashboard/update-offer/${index}`,
         data: editOfferForm,
-        headers: getAuthHeaders()
+        headers: { token: getToken() }
       });
       setRestaurant({ ...restaurant, offers: response.data.offers });
       setEditingOfferIndex(null);
@@ -255,7 +255,7 @@ const RestaurantDashboardWindow = () => {
       const response = await axios({
         method: 'delete',
         url: `http://localhost:5001/api/dashboard/delete-offer/${index}`,
-        headers: getAuthHeaders()
+        headers: { token: getToken() }
       });
       setRestaurant({ ...restaurant, offers: response.data.offers });
       toast.success("Offer deleted successfully");

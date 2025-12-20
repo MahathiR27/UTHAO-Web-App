@@ -3,7 +3,7 @@ import { useLocation } from "react-router";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { ShoppingCart, Calendar } from "lucide-react";
-import { getUser, getAuthHeaders } from "../utils/authUtils";
+import { getUser, getToken } from "../utils/authUtils";
 
 const MenuBrowserWindow = () => {
   const location = useLocation();
@@ -102,7 +102,7 @@ const MenuBrowserWindow = () => {
         method: 'post',
         url: `http://localhost:5001/api/dashboard/make-reservation/${restaurantId}`,
         data: reservationForm,
-        headers: getAuthHeaders()
+        headers: { token: getToken() }
       });
 
       toast.success("Reservation request submitted successfully!");
@@ -167,7 +167,7 @@ const MenuBrowserWindow = () => {
         method: 'post',
         url: `http://localhost:5001/api/dashboard/make-order`,
         data: orderData,
-        headers: getAuthHeaders()
+        headers: { token: getToken() }
       });
 
       toast.success("Order placed successfully!");

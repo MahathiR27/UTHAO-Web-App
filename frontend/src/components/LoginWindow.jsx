@@ -48,11 +48,10 @@ const LoginWindow = () => {
       if (res.data.requiresOTP) {
         setUserEmail(res.data.email);
         setOtpStep(true);
-        // Don't show toast yet, wait for OTP screen to be visible
-      }
+        toast.success("OTP sent to your email");} 
 
     } catch (err) {
-      toast.error(err.response?.data?.message || "Login failed");
+      toast.error("LoginWindow => handleSubmit()");
     }
   };
 
@@ -125,10 +124,17 @@ const LoginWindow = () => {
               />
             </div>
 
-            <div className="text-right">
+            <div className="flex justify-between items-center">
               <a href="#" className="link link-primary text-sm">
                 Forgot password?
               </a>
+              <button
+                type="button"
+                onClick={() => navigate("/signup")}
+                className="link link-primary text-sm"
+              >
+                Sign up
+              </button>
             </div>
 
             <button type="submit" className="btn btn-primary w-full">

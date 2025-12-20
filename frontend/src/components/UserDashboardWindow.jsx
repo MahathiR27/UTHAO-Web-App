@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { X } from "lucide-react";
-import { getUser, getAuthHeaders, removeToken } from "../utils/authUtils";
+import { getUser, getToken, removeToken } from "../utils/authUtils";
 
 const UserDashboardWindow = () => {
   const navigate = useNavigate();
@@ -37,7 +37,7 @@ const UserDashboardWindow = () => {
         const response = await axios({
           method: 'get',
           url: "http://localhost:5001/api/dashboard/get-user",
-          headers: getAuthHeaders()
+          headers: { token: getToken() }
         });
         setUser(response.data.user);
       } catch (error) {
@@ -76,7 +76,7 @@ const UserDashboardWindow = () => {
         method: 'put',
         url: "http://localhost:5001/api/dashboard/update-user",
         data: editForm,
-        headers: getAuthHeaders()
+        headers: { token: getToken() }
       });
       setUser(res.data.user);
       setEditingProfile(false);
@@ -94,7 +94,7 @@ const UserDashboardWindow = () => {
         method: 'post',
         url: "http://localhost:5001/api/dashboard/generate-refid",
         data: {},
-        headers: getAuthHeaders()
+        headers: { token: getToken() }
       });
       setUser(res.data.user);
       toast.success("Reference ID generated successfully");
@@ -113,7 +113,7 @@ const UserDashboardWindow = () => {
       const response = await axios({
         method: 'get',
         url: "http://localhost:5001/api/dashboard/get-user-cart",
-        headers: getAuthHeaders()
+        headers: { token: getToken() }
       });
       setCartOrders(response.data.cartOrders);
       setShowCartModal(true);
@@ -130,7 +130,7 @@ const UserDashboardWindow = () => {
       await axios({
         method: 'delete',
         url: `http://localhost:5001/api/dashboard/cancel-order/${orderId}`,
-        headers: getAuthHeaders()
+        headers: { token: getToken() }
       });
       // Remove from local cart
       setCartOrders(cartOrders.filter(order => order._id !== orderId));
@@ -147,7 +147,7 @@ const UserDashboardWindow = () => {
         method: 'put',
         url: "http://localhost:5001/api/dashboard/confirm-user-orders",
         data: {},
-        headers: getAuthHeaders()
+        headers: { token: getToken() }
       });
       toast.success("All orders confirmed!");
       setShowCartModal(false);

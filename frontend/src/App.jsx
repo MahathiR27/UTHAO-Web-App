@@ -11,7 +11,7 @@ import MenuBrowserPage from "./pages/MenuBrowserPage";
 
 const App = () => {
   return (
-    <div data-theme="luxury">
+    <div data-theme="forest">
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
