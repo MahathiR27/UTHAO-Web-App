@@ -10,10 +10,11 @@ import UserCreatePage from "./pages/UserCreatePage";
 import MenuBrowserPage from "./pages/MenuBrowserPage";
 import DriverCreatePage from "./pages/DriverCreatePage";
 import DriverDashboardPage from "./pages/DriverDashboardPage";
+import RideRequestPage from "./pages/RideRequestPage";
 
 const App = () => {
   return (
-    <div data-theme="forest">
+    <div data-theme="luxury">
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
@@ -23,6 +24,7 @@ const App = () => {
         <Route path="/create-user" element={<UserCreatePage />} />
         <Route path="/create-driver" element={<DriverCreatePage />} />
         <Route path="/driver-dashboard" element={<DriverDashboardPage />} />
+        <Route path="/ride-request" element={<RideRequestPage />} />
         <Route path="/menu-browser" element={<MenuBrowserPage />} />
       </Routes>
     </div>
