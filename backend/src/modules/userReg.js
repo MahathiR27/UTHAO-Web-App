@@ -1,6 +1,4 @@
-import mongoose, { Schema } from "mongoose";
-import Order from "./orderSchema.js";
-import Reservation from "./reservationSchema.js";
+import mongoose from "mongoose";
 
 const userDetailsSchema = new mongoose.Schema(
 
@@ -50,4 +48,3 @@ const userDetailsSchema = new mongoose.Schema(
 const User = mongoose.model('userReg', userDetailsSchema);
 
 export default User;
-export { Reservation, Order };

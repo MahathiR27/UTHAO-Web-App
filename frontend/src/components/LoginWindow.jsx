@@ -24,6 +24,8 @@ const LoginWindow = () => {
         navigate("/user-dashboard");
       } else if (user.userType === "restaurant") {
         navigate("/restaurant-dashboard");
+      } else if (user.userType === "driver") {
+        navigate("/driver-dashboard");
       }
     }
   }, [navigate]);
@@ -82,6 +84,8 @@ const LoginWindow = () => {
         navigate("/user-dashboard");
       } else if (user.userType === "restaurant") {
         navigate("/restaurant-dashboard");
+      } else if (user.userType === "driver") {
+        navigate("/driver-dashboard");
       }
 
     } catch (err) {
