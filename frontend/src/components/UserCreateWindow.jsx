@@ -33,8 +33,8 @@ const UserCreateWindow = () => {
       // Check if user received promocodes from referral
       if (res.data.promocodes && res.data.promocodes.length > 0) {
         toast.success(
-          `🎉 Welcome! You received ${res.data.promocodes.length} promocodes! Check your dashboard after login.`,
-          { duration: 5000 }
+          `🎉 Welcome! You've received ${res.data.promocodes.length} exclusive discount codes! Check your email for the codes. 💌`,
+          { duration: 6000 }
         );
       } else {
         toast.success("User Registered Successfully! Please login to continue.");

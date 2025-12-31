@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -8,6 +8,8 @@ import { getUser, getToken } from "../utils/authUtils";
 const UserDashboardWindow = () => {
   const navigate = useNavigate();
   const currentUser = getUser();
+  const hasShownNotification = useRef(false);
+  const hasFetchedPromos = useRef(false);
 
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -25,7 +27,7 @@ const UserDashboardWindow = () => {
   const [cartOrders, setCartOrders] = useState([]);
   const [cartLoading, setCartLoading] = useState(false);
   const [promocodes, setPromocodes] = useState([]);
-  const [showPromocodeBanner, setShowPromocodeBanner] = useState(false);
+  const [showPromocodeBanner, setShowPromocodeBanner] = useState(true);
 
   // Function to fetch promocodes
   const fetchPromocodes = async () => {
@@ -33,13 +35,32 @@ const UserDashboardWindow = () => {
       const promoResponse = await axios({
         method: 'get',
         url: "http://localhost:5001/api/dashboard/get-promocodes",
-        headers: getAuthHeaders()
+        headers: { token: getToken() }
       });
-      setPromocodes(promoResponse.data.promocodes || []);
-      // Show banner if user has available promocodes
-      if (promoResponse.data.availableCount > 0) {
+      const fetchedPromocodes = promoResponse.data.promocodes || [];
+      setPromocodes(fetchedPromocodes);
+      
+      // Only set banner to true on first fetch, respect user's choice after that
+      if (promoResponse.data.availableCount > 0 && !hasFetchedPromos.current) {
+        hasFetchedPromos.current = true;
         setShowPromocodeBanner(true);
-      } else {
+        
+        // Show welcome notification if all 3 promocodes are unused (new user with referral)
+        const unusedCount = fetchedPromocodes.filter(p => !p.used).length;
+        if (unusedCount === 3 && fetchedPromocodes.length === 3) {
+          const notificationKey = `promo_notification_shown_${currentUser.id}`;
+          const hasShownBefore = localStorage.getItem(notificationKey);
+          
+          if (!hasShownBefore && !hasShownNotification.current) {
+            hasShownNotification.current = true;
+            toast.success(
+              "🎉 Welcome! Your exclusive discount codes have been emailed to you! Check the banner above. 💌",
+              { duration: 6000 }
+            );
+            localStorage.setItem(notificationKey, 'true');
+          }
+        }
+      } else if (promoResponse.data.availableCount === 0) {
         setShowPromocodeBanner(false);
       }
     } catch (promoError) {
@@ -241,10 +262,11 @@ const UserDashboardWindow = () => {
 
         {/* Promocode Banner */}
         {showPromocodeBanner && promocodes.filter(p => !p.used).length > 0 && (
-          <div className="alert alert-info mb-4 relative">
+          <div className="alert alert-info mb-4 relative pr-12">
             <button
-              className="btn btn-ghost btn-sm absolute top-2 right-2"
+              className="btn btn-ghost btn-sm absolute top-2 right-2 z-10"
               onClick={() => setShowPromocodeBanner(false)}
+              type="button"
             >
               <X size={18} />
             </button>

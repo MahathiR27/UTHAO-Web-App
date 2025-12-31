@@ -2,28 +2,77 @@ import User from "../modules/userReg.js";
 import Restaurant from "../modules/restaurantReg.js";
 import Order from "../modules/orderSchema.js";
 import Reservation from "../modules/reservationSchema.js";
+import { sendPromocode } from "./emailService.js";
+
+// Helper function to generate random promocode
+const generateRandomPromocode = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let code = '';
+    for (let i = 0; i < 8; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+};
+
+// Helper function to generate random discount (1-50%)
+const generateRandomDiscount = () => {
+    return Math.floor(Math.random() * 50) + 1;
+};
 
 // ----------------------------------------- REGISTRATION -----------------------------------------
 export const createUser = async (req, res) => {
     try {
         
-        const { fullName, UserName, email, password, phone, address } = req.body;
+        const { fullName, UserName, email, password, phone, address, referralCode } = req.body;
 
         if (!fullName || !UserName || !email || !password || !phone) {
             return res.status(400).json({message: "All fields are required"});
         }
 
+        // Check if referral code provided
+        let promocodes = [];
+        if (referralCode && referralCode.trim()) {
+            // Validate referral code exists
+            const referrer = await User.findOne({ refId: referralCode });
+            if (!referrer) {
+                return res.status(400).json({ message: "Invalid referral code. The code you entered does not exist." });
+            }
+
+            // Generate 3 random promocodes
+            for (let i = 0; i < 3; i++) {
+                promocodes.push({
+                    code: generateRandomPromocode(),
+                    discount: generateRandomDiscount(),
+                    used: false,
+                    createdAt: new Date()
+                });
+            }
+        }
+
         const newUser = new User(
             {
-                fullName, UserName, email, password, phone, address
+                fullName, UserName, email, password, phone, address, promocodes
             }
         );
         
         await newUser.save();
 
+        // Send promocodes via email if any
+        if (promocodes.length > 0) {
+            try {
+                await sendPromocode(email, promocodes);
+            } catch (emailError) {
+                console.error("Failed to send promocode email:", emailError);
+                // Continue even if email fails
+            }
+        }
+
         return res.status(201).json({
-            message: "User registered successfully",
-            user: newUser
+            message: promocodes.length > 0 
+                ? "User registered successfully with referral bonus!" 
+                : "User registered successfully",
+            user: newUser,
+            promocodes: promocodes.length > 0 ? promocodes : undefined
         });
 
     } catch(err) {
@@ -216,6 +265,117 @@ export const confirmUserOrders = async (req, res) => {
     return res.status(200).json({
       message: "All orders confirmed successfully",
       confirmedCount: orderIds.length
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+// ----------------------------------------- Promocodes -----------------------------------------
+
+// Get user's promocodes
+export const getPromocodes = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const promocodes = user.promocodes || [];
+    const availableCount = promocodes.filter(p => !p.used).length;
+
+    return res.status(200).json({
+      promocodes,
+      availableCount
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Validate promocode (preview discount)
+export const validatePromocode = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { promocode, totalAmount } = req.body;
+
+    if (!promocode || totalAmount === undefined) {
+      return res.status(400).json({ message: "Promocode and total amount required" });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const promo = user.promocodes.find(p => p.code === promocode);
+    if (!promo) {
+      return res.status(404).json({ message: "Promocode not found", valid: false });
+    }
+
+    if (promo.used) {
+      return res.status(400).json({ message: "This promocode has already been used", valid: false });
+    }
+
+    const discountAmount = (totalAmount * promo.discount) / 100;
+    const finalAmount = totalAmount - discountAmount;
+
+    return res.status(200).json({
+      valid: true,
+      promocode: promo.code,
+      discount: promo.discount,
+      originalAmount: totalAmount,
+      discountAmount,
+      finalAmount
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Apply promocode (mark as used and return final amount)
+export const applyPromocode = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { promocode, totalAmount } = req.body;
+
+    if (!promocode || totalAmount === undefined) {
+      return res.status(400).json({ message: "Promocode and total amount required" });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const promo = user.promocodes.find(p => p.code === promocode);
+    if (!promo) {
+      return res.status(404).json({ message: "Promocode not found" });
+    }
+
+    if (promo.used) {
+      return res.status(400).json({ message: "This promocode has already been used" });
+    }
+
+    const discountAmount = (totalAmount * promo.discount) / 100;
+    const finalAmount = totalAmount - discountAmount;
+
+    // Mark promocode as used
+    promo.used = true;
+    await user.save();
+
+    return res.status(200).json({
+      message: "Promocode applied successfully",
+      originalAmount: totalAmount,
+      discount: promo.discount,
+      discountAmount,
+      finalAmount,
+      promocode: promo.code
     });
   } catch (err) {
     console.error(err);

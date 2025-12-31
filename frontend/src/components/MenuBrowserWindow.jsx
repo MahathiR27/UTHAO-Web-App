@@ -24,8 +24,12 @@ const MenuBrowserWindow = () => {
     numberOfPeople: ""
   });
   const [orderForm, setOrderForm] = useState({
-    deliveryAddress: ""
+    deliveryAddress: "",
+    promocode: ""
   });
+  const [promocodes, setPromocodes] = useState([]);
+  const [appliedDiscount, setAppliedDiscount] = useState(null);
+  const [validatingPromo, setValidatingPromo] = useState(false);
 
   // Fetch restaurant menu items on mount
   useEffect(() => {
@@ -49,8 +53,24 @@ const MenuBrowserWindow = () => {
       }
     };
 
+    const fetchPromocodes = async () => {
+      if (currentUser) {
+        try {
+          const response = await axios({
+            method: 'get',
+            url: "http://localhost:5001/api/dashboard/get-promocodes",
+            headers: { token: getToken() }
+          });
+          setPromocodes(response.data.promocodes.filter(p => !p.used) || []);
+        } catch (error) {
+          console.log("No promocodes found");
+        }
+      }
+    };
+
     fetchRestaurantMenu();
-  }, [restaurantId]);
+    fetchPromocodes();
+  }, [restaurantId, currentUser]);
 
   const handleOrder = (menuItem) => {
     setSelectedMenuItem(menuItem);
@@ -142,6 +162,41 @@ const MenuBrowserWindow = () => {
     setOrderForm(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleValidatePromocode = async () => {
+    if (!orderForm.promocode.trim()) {
+      setAppliedDiscount(null);
+      return;
+    }
+
+    setValidatingPromo(true);
+    try {
+      const menuIndex = menuItems.findIndex(item => item._id === selectedMenuItem._id);
+      const offer = getMenuItemOffer(menuIndex);
+      const originalPrice = selectedMenuItem.price || 0;
+      const discountedPrice = offer ? getDiscountedPrice(originalPrice, offer.percentage) : originalPrice;
+
+      const response = await axios({
+        method: 'post',
+        url: "http://localhost:5001/api/dashboard/validate-promocode",
+        data: {
+          promocode: orderForm.promocode,
+          totalAmount: discountedPrice
+        },
+        headers: { token: getToken() }
+      });
+
+      if (response.data.valid) {
+        setAppliedDiscount(response.data);
+        toast.success(`${response.data.discount}% discount applied! 🎉`);
+      }
+    } catch (error) {
+      setAppliedDiscount(null);
+      toast.error(error.response?.data?.message || "Invalid promocode");
+    } finally {
+      setValidatingPromo(false);
+    }
+  };
+
   const handleMakeOrder = async (e) => {
     e.preventDefault();
 
@@ -156,10 +211,29 @@ const MenuBrowserWindow = () => {
     }
 
     try {
+      const menuIndex = menuItems.findIndex(item => item._id === selectedMenuItem._id);
+      const offer = getMenuItemOffer(menuIndex);
+      const originalPrice = selectedMenuItem.price || 0;
+      let finalPrice = offer ? getDiscountedPrice(originalPrice, offer.percentage) : originalPrice;
+
+      // Apply promocode if validated
+      if (appliedDiscount && orderForm.promocode) {
+        const applyResponse = await axios({
+          method: 'post',
+          url: "http://localhost:5001/api/dashboard/apply-promocode",
+          data: {
+            promocode: orderForm.promocode,
+            totalAmount: finalPrice
+          },
+          headers: { token: getToken() }
+        });
+        finalPrice = applyResponse.data.finalAmount;
+      }
+
       const orderData = {
         restaurantId: restaurantId,
         menuItemId: selectedMenuItem._id || selectedMenuItem.id,
-        price: selectedMenuItem.price || 0,
+        price: finalPrice,
         deliveryAddress: orderForm.deliveryAddress
       };
 
@@ -172,8 +246,17 @@ const MenuBrowserWindow = () => {
 
       toast.success("Order placed successfully!");
       setShowOrderModal(false);
-      setOrderForm({ deliveryAddress: "" });
+      setOrderForm({ deliveryAddress: "", promocode: "" });
       setSelectedMenuItem(null);
+      setAppliedDiscount(null);
+
+      // Refresh promocodes
+      const promoResponse = await axios({
+        method: 'get',
+        url: "http://localhost:5001/api/dashboard/get-promocodes",
+        headers: { token: getToken() }
+      });
+      setPromocodes(promoResponse.data.promocodes.filter(p => !p.used) || []);
     } catch (error) {
       console.error("Order error:", error);
       toast.error(error.response?.data?.message || "Failed to place order");
@@ -182,8 +265,9 @@ const MenuBrowserWindow = () => {
 
   const closeOrderModal = () => {
     setShowOrderModal(false);
-    setOrderForm({ deliveryAddress: "" });
+    setOrderForm({ deliveryAddress: "", promocode: "" });
     setSelectedMenuItem(null);
+    setAppliedDiscount(null);
   };
 
   if (loading) {
@@ -433,7 +517,8 @@ const MenuBrowserWindow = () => {
         const offer = getMenuItemOffer(menuIndex);
         const originalPrice = selectedMenuItem.price || 0;
         const discountedPrice = offer ? getDiscountedPrice(originalPrice, offer.percentage) : null;
-        const finalPrice = discountedPrice !== null ? discountedPrice : originalPrice;
+        const basePrice = discountedPrice !== null ? discountedPrice : originalPrice;
+        const finalPrice = appliedDiscount ? appliedDiscount.finalAmount : basePrice;
 
         return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -478,6 +563,69 @@ const MenuBrowserWindow = () => {
                     className="textarea textarea-bordered h-20"
                     required
                   />
+                </div>
+
+                {promocodes.length > 0 && (
+                  <div className="form-control mb-4">
+                    <label className="label">
+                      <span className="label-text">Have a promocode?</span>
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        name="promocode"
+                        value={orderForm.promocode}
+                        onChange={handleOrderChange}
+                        placeholder="Enter promocode"
+                        className="input input-bordered flex-1"
+                        list="promocode-list"
+                      />
+                      <datalist id="promocode-list">
+                        {promocodes.map(promo => (
+                          <option key={promo.code} value={promo.code}>
+                            {promo.discount}% OFF
+                          </option>
+                        ))}
+                      </datalist>
+                      <button
+                        type="button"
+                        onClick={handleValidatePromocode}
+                        className="btn btn-secondary btn-sm"
+                        disabled={validatingPromo}
+                      >
+                        {validatingPromo ? "..." : "Apply"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {appliedDiscount && (
+                  <div className="alert alert-success mb-4 py-2">
+                    <div className="flex items-center justify-between w-full">
+                      <span className="text-sm">
+                        🎉 {appliedDiscount.discount}% discount applied!
+                      </span>
+                      <span className="text-sm font-bold">
+                        -${appliedDiscount.discountAmount.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="bg-base-200 p-3 rounded-lg mb-4">
+                  <div className="flex justify-between items-center">
+                    <span className="font-semibold">Total Amount:</span>
+                    <div className="text-right">
+                      {appliedDiscount && (
+                        <div className="text-sm text-gray-500 line-through">
+                          ${basePrice.toFixed(2)}
+                        </div>
+                      )}
+                      <span className="text-xl font-bold text-primary">
+                        ${finalPrice.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="modal-action">

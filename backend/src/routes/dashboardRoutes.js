@@ -1,6 +1,6 @@
 import express from 'express';
 import { getRestaurant, addMenu, updateRestaurant, updateMenu, addOffer, getOffers, updateOffer, deleteOffer } from '../controllers/restaurantController.js';
-import { getUser, updateUser, generateRefId, getUserCart, cancelOrder, confirmUserOrders } from '../controllers/userController.js';
+import { getUser, updateUser, generateRefId, getUserCart, cancelOrder, confirmUserOrders, getPromocodes, validatePromocode, applyPromocode } from '../controllers/userController.js';
 import { getDriver, updateDriver } from '../controllers/driverController.js';
 import { getRestaurantMenuItems, makeReservation, updateReservationStatus, makeOrder } from '../controllers/dashboardController.js';
 import { calculateFare, createRideRequest, getRequestedRides, acceptRideRequest, getRideStatus, cancelRideRequest, updateRideStatus } from '../controllers/rideController.js';
@@ -24,6 +24,11 @@ router.delete("/delete-offer/:index", verifyToken, deleteOffer);
 router.get("/get-user", verifyToken, getUser);
 router.put("/update-user", verifyToken, updateUser);
 router.post("/generate-refid", verifyToken, generateRefId);
+
+// Promocode endpoints (protected)
+router.get("/get-promocodes", verifyToken, getPromocodes);
+router.post("/validate-promocode", verifyToken, validatePromocode);
+router.post("/apply-promocode", verifyToken, applyPromocode);
 
 // Menu browser endpoints (public for get, protected for write)
 router.get("/get-restaurant-menu/:restaurantId", getRestaurantMenuItems);
