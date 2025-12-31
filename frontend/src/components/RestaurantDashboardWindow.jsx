@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { Calendar, Check, X, Tag } from "lucide-react";
+import { Calendar, Check, X, Tag, Star } from "lucide-react";
 import { getUser, getToken } from "../utils/authUtils";
 
 const RestaurantDashboardWindow = () => {
@@ -26,6 +26,10 @@ const RestaurantDashboardWindow = () => {
   const [offerForm, setOfferForm] = useState({ title: "", percentage: "", menuItemIndices: [] });
   const [editingOfferIndex, setEditingOfferIndex] = useState(null);
   const [editOfferForm, setEditOfferForm] = useState({ title: "", percentage: "", menuItemIndices: [] });
+  
+  // Reviews state
+  const [reviews, setReviews] = useState([]);
+  const [showReviewsModal, setShowReviewsModal] = useState(false);
 
   // Fetch restaurant data on mount
   useEffect(() => {
@@ -263,6 +267,21 @@ const RestaurantDashboardWindow = () => {
     }
   };
 
+  const handleOpenReviews = async () => {
+    try {
+      const response = await axios({
+        method: 'get',
+        url: "http://localhost:5001/api/dashboard/get-restaurant-reviews",
+        headers: { token: getToken() }
+      });
+      setReviews(response.data.reviews);
+      setShowReviewsModal(true);
+    } catch (error) {
+      toast.error("Failed to load reviews");
+      console.error(error);
+    }
+  };
+
   const toggleMenuItemInOffer = (menuIndex, isEditing = false) => {
     if (isEditing) {
       const currentIndices = [...editOfferForm.menuItemIndices];
@@ -403,6 +422,47 @@ const RestaurantDashboardWindow = () => {
           <div className="bg-base-200 p-4 rounded-lg flex flex-col justify-between">
             <div>
               <h4 className="font-bold text-lg mb-3">Restaurant Statistics</h4>
+              
+              {/* Rating Section */}
+              <div className="mb-4 p-3 bg-base-300 rounded-lg">
+                <h5 className="font-semibold mb-2">Customer Ratings</h5>
+                {restaurant.numberOfRatings > 0 ? (
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                      <div className="rating rating-md">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <Star
+                            key={star}
+                            className={`w-5 h-5 ${
+                              star <= Math.round(restaurant.rating)
+                                ? "fill-yellow-400 text-yellow-400"
+                                : "text-gray-400"
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      <span className="text-lg font-bold">{restaurant.rating.toFixed(1)}</span>
+                      <span className="text-sm text-gray-500">({restaurant.numberOfRatings} reviews)</span>
+                    </div>
+                    <button 
+                      onClick={handleOpenReviews}
+                      className="btn btn-xs btn-outline btn-primary"
+                    >
+                      View All Reviews
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-1">
+                    <div className="rating rating-md">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star key={star} className="w-5 h-5 text-gray-400" />
+                      ))}
+                    </div>
+                    <span className="text-sm text-gray-500 italic">No reviews yet</span>
+                  </div>
+                )}
+              </div>
+
               <div className="stats shadow">
                 <div className="stat">
                   <div className="stat-title">Menu Items</div>
@@ -833,6 +893,66 @@ const RestaurantDashboardWindow = () => {
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Reviews Modal */}
+    {showReviewsModal && (
+      <div className="modal modal-open">
+        <div className="modal-box w-full max-w-3xl max-h-[90vh]">
+          <h3 className="font-bold text-lg mb-4">Customer Reviews</h3>
+
+          {reviews.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="flex justify-center mb-3">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Star key={star} className="w-8 h-8 text-gray-400" />
+                ))}
+              </div>
+              <p className="text-gray-500 italic">No reviews yet</p>
+            </div>
+          ) : (
+            <div className="space-y-4 overflow-y-auto max-h-[70vh]">
+              {reviews.map((review) => (
+                <div key={review._id} className="bg-base-200 p-4 rounded-lg">
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <p className="font-semibold">{review.userName}</p>
+                      <p className="text-xs text-gray-500">
+                        {new Date(review.ratedAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star
+                          key={star}
+                          className={`w-4 h-4 ${
+                            star <= review.rating
+                              ? "fill-yellow-400 text-yellow-400"
+                              : "text-gray-400"
+                          }`}
+                        />
+                      ))}
+                      <span className="ml-1 font-semibold">{review.rating}</span>
+                    </div>
+                  </div>
+                  {review.review && (
+                    <p className="text-sm text-gray-700 italic mt-2">"{review.review}"</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="modal-action">
+            <button
+              onClick={() => setShowReviewsModal(false)}
+              className="btn"
+            >
+              Close
+            </button>
           </div>
         </div>
       </div>

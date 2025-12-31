@@ -4,6 +4,8 @@ import { MapPin, Navigation, Clock, Route, Car, X, Shield, User, Phone, CheckCir
 import toast from "react-hot-toast";
 import axios from "axios";
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001';
+
 const RideStatusWindow = () => {
   const navigate = useNavigate();
   const { rideId } = useParams();
@@ -17,7 +19,7 @@ const RideStatusWindow = () => {
     try {
       const token = localStorage.getItem("token");
       const response = await axios.get(
-        `http://localhost:5001/api/dashboard/ride-status/${rideId}`,
+        `${API_BASE_URL}/api/dashboard/ride-status/${rideId}`,
         { headers: { token: token } }
       );
       setRide(response.data);
@@ -38,7 +40,7 @@ const RideStatusWindow = () => {
     try {
       const token = localStorage.getItem("token");
       await axios.put(
-        `http://localhost:5001/api/dashboard/cancel-ride/${rideId}`,
+        `${API_BASE_URL}/api/dashboard/cancel-ride/${rideId}`,
         {},
         { headers: { token: token } }
       );
@@ -56,7 +58,7 @@ const RideStatusWindow = () => {
     try {
       const token = localStorage.getItem("token");
       await axios.post(
-        "http://localhost:5001/api/dashboard/rate-driver",
+        `${API_BASE_URL}/api/dashboard/rate-driver`,
         { rideId, rating: selectedRating },
         { headers: { token: token } }
       );

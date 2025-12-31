@@ -5,6 +5,8 @@ import toast from "react-hot-toast";
 import { ShoppingCart, Calendar } from "lucide-react";
 import { getUser, getToken } from "../utils/authUtils";
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001';
+
 const MenuBrowserWindow = () => {
   const location = useLocation();
   const params = new URLSearchParams(location.search);
@@ -31,6 +33,22 @@ const MenuBrowserWindow = () => {
   const [appliedDiscount, setAppliedDiscount] = useState(null);
   const [validatingPromo, setValidatingPromo] = useState(false);
 
+  // Reusable function to fetch promocodes
+  const fetchPromocodes = async () => {
+    if (currentUser) {
+      try {
+        const response = await axios({
+          method: 'get',
+          url: `${API_BASE_URL}/api/dashboard/get-promocodes`,
+          headers: { token: getToken() }
+        });
+        setPromocodes(response.data.promocodes.filter(p => !p.used) || []);
+      } catch (error) {
+        console.log("No promocodes found");
+      }
+    }
+  };
+
   // Fetch restaurant menu items on mount
   useEffect(() => {
     if (!restaurantId) {
@@ -41,7 +59,7 @@ const MenuBrowserWindow = () => {
     const fetchRestaurantMenu = async () => {
       try {
         const response = await axios.get(
-          `http://localhost:5001/api/dashboard/get-restaurant-menu/${restaurantId}`
+          `${API_BASE_URL}/api/dashboard/get-restaurant-menu/${restaurantId}`
         );
         setRestaurant(response.data.restaurant);
         setMenuItems(response.data.menuItems || []);
@@ -50,21 +68,6 @@ const MenuBrowserWindow = () => {
         console.error(error);
       } finally {
         setLoading(false);
-      }
-    };
-
-    const fetchPromocodes = async () => {
-      if (currentUser) {
-        try {
-          const response = await axios({
-            method: 'get',
-            url: "http://localhost:5001/api/dashboard/get-promocodes",
-            headers: { token: getToken() }
-          });
-          setPromocodes(response.data.promocodes.filter(p => !p.used) || []);
-        } catch (error) {
-          console.log("No promocodes found");
-        }
       }
     };
 
@@ -120,7 +123,7 @@ const MenuBrowserWindow = () => {
     try {
       const response = await axios({
         method: 'post',
-        url: `http://localhost:5001/api/dashboard/make-reservation/${restaurantId}`,
+        url: `${API_BASE_URL}/api/dashboard/make-reservation/${restaurantId}`,
         data: reservationForm,
         headers: { token: getToken() }
       });
@@ -177,7 +180,7 @@ const MenuBrowserWindow = () => {
 
       const response = await axios({
         method: 'post',
-        url: "http://localhost:5001/api/dashboard/validate-promocode",
+        url: `${API_BASE_URL}/api/dashboard/validate-promocode`,
         data: {
           promocode: orderForm.promocode,
           totalAmount: discountedPrice
@@ -218,16 +221,23 @@ const MenuBrowserWindow = () => {
 
       // Apply promocode if validated
       if (appliedDiscount && orderForm.promocode) {
-        const applyResponse = await axios({
-          method: 'post',
-          url: "http://localhost:5001/api/dashboard/apply-promocode",
-          data: {
-            promocode: orderForm.promocode,
-            totalAmount: finalPrice
-          },
-          headers: { token: getToken() }
-        });
-        finalPrice = applyResponse.data.finalAmount;
+        try {
+          const applyResponse = await axios({
+            method: 'post',
+            url: `${API_BASE_URL}/api/dashboard/apply-promocode`,
+            data: {
+              promocode: orderForm.promocode,
+              totalAmount: finalPrice,
+              expectedFinalAmount: appliedDiscount.finalAmount
+            },
+            headers: { token: getToken() }
+          });
+          finalPrice = applyResponse.data.finalAmount;
+        } catch (promoError) {
+          toast.error("Failed to apply promocode. Proceeding with original price.");
+          console.error("Promocode application error:", promoError);
+          // Continue with non-discounted price
+        }
       }
 
       const orderData = {
@@ -239,7 +249,7 @@ const MenuBrowserWindow = () => {
 
       const response = await axios({
         method: 'post',
-        url: `http://localhost:5001/api/dashboard/make-order`,
+        url: `${API_BASE_URL}/api/dashboard/make-order`,
         data: orderData,
         headers: { token: getToken() }
       });
@@ -250,13 +260,8 @@ const MenuBrowserWindow = () => {
       setSelectedMenuItem(null);
       setAppliedDiscount(null);
 
-      // Refresh promocodes
-      const promoResponse = await axios({
-        method: 'get',
-        url: "http://localhost:5001/api/dashboard/get-promocodes",
-        headers: { token: getToken() }
-      });
-      setPromocodes(promoResponse.data.promocodes.filter(p => !p.used) || []);
+      // Refresh promocodes using shared function
+      await fetchPromocodes();
     } catch (error) {
       console.error("Order error:", error);
       toast.error(error.response?.data?.message || "Failed to place order");
@@ -571,22 +576,19 @@ const MenuBrowserWindow = () => {
                       <span className="label-text">Have a promocode?</span>
                     </label>
                     <div className="flex gap-2">
-                      <input
-                        type="text"
+                      <select
                         name="promocode"
                         value={orderForm.promocode}
                         onChange={handleOrderChange}
-                        placeholder="Enter promocode"
-                        className="input input-bordered flex-1"
-                        list="promocode-list"
-                      />
-                      <datalist id="promocode-list">
+                        className="select select-bordered flex-1"
+                      >
+                        <option value="">Select a promocode</option>
                         {promocodes.map(promo => (
                           <option key={promo.code} value={promo.code}>
-                            {promo.discount}% OFF
+                            {promo.code} - {promo.discount}% OFF
                           </option>
                         ))}
-                      </datalist>
+                      </select>
                       <button
                         type="button"
                         onClick={handleValidatePromocode}

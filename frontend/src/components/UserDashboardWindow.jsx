@@ -2,8 +2,10 @@ import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { X } from "lucide-react";
+import { X, Star } from "lucide-react";
 import { getUser, getToken } from "../utils/authUtils";
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001';
 
 const UserDashboardWindow = () => {
   const navigate = useNavigate();
@@ -28,40 +30,42 @@ const UserDashboardWindow = () => {
   const [cartLoading, setCartLoading] = useState(false);
   const [promocodes, setPromocodes] = useState([]);
   const [showPromocodeBanner, setShowPromocodeBanner] = useState(true);
+  const [showOrdersModal, setShowOrdersModal] = useState(false);
+  const [orders, setOrders] = useState([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [ratingModalOrder, setRatingModalOrder] = useState(null);
+  const [rating, setRating] = useState(0);
+  const [review, setReview] = useState("");
+  const [hoveredStar, setHoveredStar] = useState(0);
 
   // Function to fetch promocodes
   const fetchPromocodes = async () => {
     try {
       const promoResponse = await axios({
         method: 'get',
-        url: "http://localhost:5001/api/dashboard/get-promocodes",
+        url: `${API_BASE_URL}/api/dashboard/get-promocodes`,
         headers: { token: getToken() }
       });
       const fetchedPromocodes = promoResponse.data.promocodes || [];
       setPromocodes(fetchedPromocodes);
       
-      // Only set banner to true on first fetch, respect user's choice after that
-      if (promoResponse.data.availableCount > 0 && !hasFetchedPromos.current) {
-        hasFetchedPromos.current = true;
-        setShowPromocodeBanner(true);
+      // Show banner based on available promocodes count
+      const availableCount = promoResponse.data.availableCount || 0;
+      setShowPromocodeBanner(availableCount > 0);
         
-        // Show welcome notification if all 3 promocodes are unused (new user with referral)
-        const unusedCount = fetchedPromocodes.filter(p => !p.used).length;
-        if (unusedCount === 3 && fetchedPromocodes.length === 3) {
-          const notificationKey = `promo_notification_shown_${currentUser.id}`;
-          const hasShownBefore = localStorage.getItem(notificationKey);
-          
-          if (!hasShownBefore && !hasShownNotification.current) {
-            hasShownNotification.current = true;
-            toast.success(
-              "🎉 Welcome! Your exclusive discount codes have been emailed to you! Check the banner above. 💌",
-              { duration: 6000 }
-            );
-            localStorage.setItem(notificationKey, 'true');
-          }
+      // Show welcome notification if all 3 promocodes are unused (new user with referral)
+      const unusedCount = fetchedPromocodes.filter(p => !p.used).length;
+      if (unusedCount === 3 && fetchedPromocodes.length === 3) {
+        const notificationKey = `promo_notification_shown_${currentUser.id}`;
+        const hasShownBefore = localStorage.getItem(notificationKey);
+        
+        if (!hasShownBefore) {
+          toast.success(
+            "🎉 Welcome! Your exclusive discount codes have been emailed to you! Check the banner above. 💌",
+            { duration: 6000 }
+          );
+          localStorage.setItem(notificationKey, 'true');
         }
-      } else if (promoResponse.data.availableCount === 0) {
-        setShowPromocodeBanner(false);
       }
     } catch (promoError) {
       // User might not have promocodes, that's ok
@@ -88,7 +92,7 @@ const UserDashboardWindow = () => {
       try {
         const response = await axios({
           method: 'get',
-          url: "http://localhost:5001/api/dashboard/get-user",
+          url: `${API_BASE_URL}/api/dashboard/get-user`,
           headers: { token: getToken() }
         });
         setUser(response.data.user);
@@ -131,7 +135,7 @@ const UserDashboardWindow = () => {
     try {
       const res = await axios({
         method: 'put',
-        url: "http://localhost:5001/api/dashboard/update-user",
+        url: `${API_BASE_URL}/api/dashboard/update-user`,
         data: editForm,
         headers: { token: getToken() }
       });
@@ -149,7 +153,7 @@ const UserDashboardWindow = () => {
     try {
       const res = await axios({
         method: 'post',
-        url: "http://localhost:5001/api/dashboard/generate-refid",
+        url: `${API_BASE_URL}/api/dashboard/generate-refid`,
         data: {},
         headers: { token: getToken() }
       });
@@ -169,7 +173,7 @@ const UserDashboardWindow = () => {
     try {
       const response = await axios({
         method: 'get',
-        url: "http://localhost:5001/api/dashboard/get-user-cart",
+        url: `${API_BASE_URL}/api/dashboard/get-user-cart`,
         headers: { token: getToken() }
       });
       setCartOrders(response.data.cartOrders);
@@ -186,7 +190,7 @@ const UserDashboardWindow = () => {
     try {
       await axios({
         method: 'delete',
-        url: `http://localhost:5001/api/dashboard/cancel-order/${orderId}`,
+        url: `${API_BASE_URL}/api/dashboard/cancel-order/${orderId}`,
         headers: { token: getToken() }
       });
       // Remove from local cart
@@ -202,7 +206,7 @@ const UserDashboardWindow = () => {
     try {
       await axios({
         method: 'put',
-        url: "http://localhost:5001/api/dashboard/confirm-user-orders",
+        url: `${API_BASE_URL}/api/dashboard/confirm-user-orders`,
         data: {},
         headers: { token: getToken() }
       });
@@ -211,6 +215,68 @@ const UserDashboardWindow = () => {
       setCartOrders([]);
     } catch (error) {
       toast.error("Failed to confirm orders");
+      console.error(error);
+    }
+  };
+
+  const handleOpenOrders = async () => {
+    setOrdersLoading(true);
+    try {
+      const response = await axios({
+        method: 'get',
+        url: `${API_BASE_URL}/api/dashboard/get-user-orders`,
+        headers: { token: getToken() }
+      });
+      setOrders(response.data.orders);
+      setShowOrdersModal(true);
+    } catch (error) {
+      toast.error("Failed to load orders");
+      console.error(error);
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
+
+  const handleOpenRatingModal = (order) => {
+    setRatingModalOrder(order);
+    setRating(0);
+    setReview("");
+    setHoveredStar(0);
+  };
+
+  const handleRateRestaurant = async () => {
+    if (rating === 0) {
+      toast.error("Please select a rating");
+      return;
+    }
+
+    try {
+      await axios({
+        method: 'post',
+        url: `${API_BASE_URL}/api/dashboard/rate-restaurant`,
+        data: {
+          restaurantId: ratingModalOrder.restaurantId,
+          orderId: ratingModalOrder._id,
+          rating,
+          review: review.trim() || null
+        },
+        headers: { token: getToken() }
+      });
+
+      toast.success("Thank you for your rating!");
+      
+      // Update order in local state
+      setOrders(orders.map(o => 
+        o._id === ratingModalOrder._id 
+          ? { ...o, userRating: rating, userReview: review, ratedAt: new Date() }
+          : o
+      ));
+      
+      setRatingModalOrder(null);
+      setRating(0);
+      setReview("");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to submit rating");
       console.error(error);
     }
   };
@@ -261,7 +327,13 @@ const UserDashboardWindow = () => {
         </div>
 
         {/* Promocode Banner */}
-        {showPromocodeBanner && promocodes.filter(p => !p.used).length > 0 && (
+        {showPromocodeBanner && (() => {
+          const unusedPromocodes = promocodes.filter(p => !p.used);
+          const unusedCount = unusedPromocodes.length;
+          
+          if (unusedCount === 0) return null;
+          
+          return (
           <div className="alert alert-info mb-4 relative pr-12">
             <button
               className="btn btn-ghost btn-sm absolute top-2 right-2 z-10"
@@ -276,26 +348,26 @@ const UserDashboardWindow = () => {
               </svg>
               <div>
                 <h3 className="font-bold">
-                  {promocodes.filter(p => !p.used).length === 3 ? '🎉 Welcome to UTHAO!' : 
-                   promocodes.filter(p => !p.used).length === 2 ? '✨ Great Choice!' : 
+                  {unusedCount === 3 ? '🎉 Welcome to UTHAO!' : 
+                   unusedCount === 2 ? '✨ Great Choice!' : 
                    '🎊 Last Chance!'}
                 </h3>
                 <div className="text-sm">
-                  {promocodes.filter(p => !p.used).length === 3 ? (
+                  {unusedCount === 3 ? (
                     <>
-                      You have <strong>{promocodes.filter(p => !p.used).length} exclusive welcome promocodes</strong> waiting for you! 
+                      You have <strong>{unusedCount} exclusive welcome promocodes</strong> waiting for you! 
                       Thank you for joining us through a referral! 🌟
                     </>
-                  ) : promocodes.filter(p => !p.used).length === 2 ? (
+                  ) : unusedCount === 2 ? (
                     <>
-                      You still have <strong>{promocodes.filter(p => !p.used).length} amazing promocodes</strong> left! 
-                      Continue saving up to <strong>{Math.max(...promocodes.filter(p => !p.used).map(p => p.discount))}%</strong> on your next orders. 
+                      You still have <strong>{unusedCount} amazing promocodes</strong> left! 
+                      Continue saving up to <strong>{Math.max(...unusedPromocodes.map(p => p.discount))}%</strong> on your next orders. 
                       Keep enjoying the benefits! 💫
                     </>
                   ) : (
                     <>
                       You have <strong>1 more special promocode</strong> remaining! 
-                      Don't miss out on your <strong>{promocodes.find(p => !p.used)?.discount}%</strong> discount. 
+                      Don't miss out on your <strong>{unusedPromocodes[0]?.discount}%</strong> discount. 
                       Make it count! 🎁
                     </>
                   )}
@@ -306,7 +378,8 @@ const UserDashboardWindow = () => {
               </div>
             </div>
           </div>
-        )}
+          );
+        })()}
 
         {/* Edit Profile Form */}
         {editingProfile && (
@@ -419,7 +492,7 @@ const UserDashboardWindow = () => {
 
           <div className="flex justify-center gap-4 flex-wrap">
             <button className="btn btn-primary" onClick={() => handleOpenCart()}>See Cart</button>
-            <button className="btn btn-outline">View Order History</button>
+            <button className="btn btn-outline" onClick={() => handleOpenOrders()}>View Order History</button>
           </div>
         </div>
       </div>
@@ -524,6 +597,159 @@ const UserDashboardWindow = () => {
                   Confirm All Orders
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Order History Modal */}
+      {showOrdersModal && (
+        <div className="modal modal-open">
+          <div className="modal-box w-full max-w-4xl max-h-[90vh]">
+            <h3 className="font-bold text-lg mb-4">Order History</h3>
+
+            {orders.length === 0 ? (
+              <p className="text-center text-gray-500 py-8">No orders yet</p>
+            ) : (
+              <div className="space-y-3 overflow-y-auto max-h-[70vh]">
+                {orders.map((order) => (
+                  <div key={order._id} className="bg-base-200 p-4 rounded-lg">
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-lg">{order.restaurantName}</h4>
+                        <p className="text-sm text-gray-600">{order.deliveryAddress}</p>
+                        <p className="text-sm">
+                          <span className="font-semibold">Status:</span>{" "}
+                          <span className={`badge ${
+                            order.status === 'delivered' ? 'badge-success' :
+                            order.status === 'cancelled' ? 'badge-error' :
+                            'badge-warning'
+                          }`}>
+                            {order.status}
+                          </span>
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {new Date(order.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <span className="font-bold text-primary text-xl">${order.price}</span>
+                      </div>
+                    </div>
+
+                    {/* Rating Section */}
+                    {order.status === 'delivered' && (
+                      <div className="mt-3 pt-3 border-t border-base-300">
+                        {order.userRating ? (
+                          <div className="bg-base-100 p-3 rounded">
+                            <p className="text-sm font-semibold mb-1">Your Rating:</p>
+                            <div className="flex items-center gap-2 mb-2">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <Star
+                                  key={star}
+                                  className={`w-5 h-5 ${
+                                    star <= order.userRating
+                                      ? "fill-yellow-400 text-yellow-400"
+                                      : "text-gray-400"
+                                  }`}
+                                />
+                              ))}
+                              <span className="text-sm text-gray-600">
+                                ({new Date(order.ratedAt).toLocaleDateString()})
+                              </span>
+                            </div>
+                            {order.userReview && (
+                              <p className="text-sm italic text-gray-600">"{order.userReview}"</p>
+                            )}
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => handleOpenRatingModal(order)}
+                            className="btn btn-sm btn-outline btn-primary"
+                          >
+                            Rate Restaurant
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="modal-action">
+              <button
+                onClick={() => setShowOrdersModal(false)}
+                className="btn"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rating Modal */}
+      {ratingModalOrder && (
+        <div className="modal modal-open">
+          <div className="modal-box">
+            <h3 className="font-bold text-lg mb-4">Rate {ratingModalOrder.restaurantName}</h3>
+
+            <div className="space-y-4">
+              <div>
+                <label className="label">
+                  <span className="label-text font-semibold">Your Rating</span>
+                </label>
+                <div className="flex gap-2 justify-center py-4">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Star
+                      key={star}
+                      className={`w-10 h-10 cursor-pointer transition-all ${
+                        star <= (hoveredStar || rating)
+                          ? "fill-yellow-400 text-yellow-400 scale-110"
+                          : "text-gray-400"
+                      }`}
+                      onClick={() => setRating(star)}
+                      onMouseEnter={() => setHoveredStar(star)}
+                      onMouseLeave={() => setHoveredStar(0)}
+                    />
+                  ))}
+                </div>
+                {rating > 0 && (
+                  <p className="text-center text-sm text-gray-600">
+                    You rated: {rating} star{rating > 1 ? 's' : ''}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="label">
+                  <span className="label-text font-semibold">Review (Optional)</span>
+                </label>
+                <textarea
+                  className="textarea textarea-bordered w-full"
+                  placeholder="Share your experience..."
+                  rows="4"
+                  value={review}
+                  onChange={(e) => setReview(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="modal-action">
+              <button
+                onClick={() => setRatingModalOrder(null)}
+                className="btn btn-ghost"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleRateRestaurant}
+                className="btn btn-primary"
+                disabled={rating === 0}
+              >
+                Submit Rating
+              </button>
             </div>
           </div>
         </div>
