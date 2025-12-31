@@ -240,9 +240,31 @@ const DriverDashboardWindow = () => {
             </div>
           </div>
 
-          <h3 className="text-2xl font-bold text-center mb-6">
+          <h3 className="text-2xl font-bold text-center mb-2">
             {driver.fullName || driver.UserName}
           </h3>
+
+          {/* Driver Rating Display */}
+          <div className="flex items-center justify-center mb-6 gap-2">
+            <div className="rating rating-sm">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <input
+                  key={star}
+                  type="radio"
+                  name="rating-display"
+                  className="mask mask-star-2 bg-warning"
+                  checked={Math.round(driver.rating || 0) === star}
+                  readOnly
+                />
+              ))}
+            </div>
+            <span className="text-lg font-semibold text-warning">
+              {driver.rating ? driver.rating.toFixed(1) : "0.0"}
+            </span>
+            <span className="text-sm text-base-content opacity-60">
+              ({driver.numberOfRatings || 0} {driver.numberOfRatings === 1 ? 'rating' : 'ratings'})
+            </span>
+          </div>
 
           <div className="space-y-3 mb-6">
             <div className="flex items-start">

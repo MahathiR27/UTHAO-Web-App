@@ -1,5 +1,6 @@
 // Simple fare calculation for rides
 import RideRequest from "../modules/rideRequestSchema.js";
+import Driver from "../modules/driverReg.js";
 
 import {sendRideCompletionEmail} from './emailService.js';
 
@@ -219,6 +220,67 @@ export const updateRideStatus = async (req, res) => {
     return res.status(200).json({
       message: "Ride status updated successfully",
       ride
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Rate a driver after ride completion
+export const rateDriver = async (req, res) => {
+  try {
+    const { rideId, rating } = req.body;
+    const userId = req.user.id;
+
+    if (!rideId || !rating) {
+      return res.status(400).json({ message: "Ride ID and rating are required" });
+    }
+
+    if (rating < 1 || rating > 5) {
+      return res.status(400).json({ message: "Rating must be between 1 and 5" });
+    }
+
+    const ride = await RideRequest.findById(rideId);
+
+    if (!ride) {
+      return res.status(404).json({ message: "Ride not found" });
+    }
+
+    if (ride.userId.toString() !== userId) {
+      return res.status(403).json({ message: "Unauthorized to rate this ride" });
+    }
+
+    if (ride.status !== "completed") {
+      return res.status(400).json({ message: "Can only rate completed rides" });
+    }
+
+    if (ride.userRating) {
+      return res.status(400).json({ message: "You have already rated this ride" });
+    }
+
+    if (!ride.driverId) {
+      return res.status(400).json({ message: "No driver assigned to this ride" });
+    }
+
+    // Update ride with rating
+    ride.userRating = rating;
+    ride.ratedAt = new Date();
+    await ride.save();
+
+    // Update driver's rating
+    const driver = await Driver.findById(ride.driverId);
+    if (driver) {
+      driver.totalRatings = (driver.totalRatings || 0) + rating;
+      driver.numberOfRatings = (driver.numberOfRatings || 0) + 1;
+      driver.rating = driver.totalRatings / driver.numberOfRatings;
+      await driver.save();
+    }
+
+    return res.status(200).json({
+      message: "Driver rated successfully",
+      rating: ride.userRating,
+      driverAverageRating: driver ? driver.rating.toFixed(1) : null
     });
   } catch (err) {
     console.error(err);

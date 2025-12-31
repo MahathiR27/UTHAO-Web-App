@@ -46,6 +46,16 @@ const driverDetailSchema = new mongoose.Schema(
       required: false,
       max: 5,
       min: 0
+    },
+    totalRatings: {
+      type: Number,
+      default: 0,
+      required: false
+    },
+    numberOfRatings: {
+      type: Number,
+      default: 0,
+      required: false
     }
   }
 )

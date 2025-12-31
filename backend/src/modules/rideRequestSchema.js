@@ -54,6 +54,16 @@ const rideRequestSchema = new mongoose.Schema({
     type: Date,
     default: null,
   },
+  userRating: {
+    type: Number,
+    default: null,
+    min: 1,
+    max: 5,
+  },
+  ratedAt: {
+    type: Date,
+    default: null,
+  },
 });
 
 export default mongoose.model("RideRequest", rideRequestSchema);

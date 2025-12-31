@@ -3,7 +3,7 @@ import { getRestaurant, addMenu, updateRestaurant, updateMenu, addOffer, getOffe
 import { getUser, updateUser, generateRefId, getUserCart, cancelOrder, confirmUserOrders, getPromocodes, validatePromocode, applyPromocode } from '../controllers/userController.js';
 import { getDriver, updateDriver } from '../controllers/driverController.js';
 import { getRestaurantMenuItems, makeReservation, updateReservationStatus, makeOrder } from '../controllers/dashboardController.js';
-import { calculateFare, createRideRequest, getRequestedRides, acceptRideRequest, getRideStatus, cancelRideRequest, updateRideStatus } from '../controllers/rideController.js';
+import { calculateFare, createRideRequest, getRequestedRides, acceptRideRequest, getRideStatus, cancelRideRequest, updateRideStatus, rateDriver } from '../controllers/rideController.js';
 import { verifyToken } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -53,5 +53,6 @@ router.post("/accept-ride", verifyToken, acceptRideRequest);
 router.get("/ride-status/:rideId", verifyToken, getRideStatus);
 router.put("/cancel-ride/:rideId", verifyToken, cancelRideRequest);
 router.put("/update-ride-status", verifyToken, updateRideStatus);
+router.post("/rate-driver", verifyToken, rateDriver);
 
 export default router;
