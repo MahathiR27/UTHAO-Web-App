@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { X } from "lucide-react";
-import { getUser, getToken, removeToken } from "../utils/authUtils";
+import { getUser, getToken } from "../utils/authUtils";
 
 const UserDashboardWindow = () => {
   const navigate = useNavigate();
@@ -42,8 +42,9 @@ const UserDashboardWindow = () => {
         });
         setUser(response.data.user);
       } catch (error) {
-        toast.error("Failed to load user details");
-        console.error(error);
+        const errorMsg = error.response?.data?.message || error.message || "Failed to load user details";
+        toast.error(errorMsg);
+        console.error("Dashboard Error:", error);
       } finally {
         setLoading(false);
       }
@@ -160,12 +161,6 @@ const UserDashboardWindow = () => {
     }
   };
 
-  const handleLogout = () => {
-    removeToken();
-    toast.success("Logged out successfully");
-    navigate("/login");
-  };
-
   if (loading) {
     return (
       <div className="card w-full max-w-6xl bg-base-100 shadow-xl border border-base-300">
@@ -207,12 +202,6 @@ const UserDashboardWindow = () => {
               onClick={handleToggleEditProfile}
             >
               {editingProfile ? "Close" : "Edit Profile"}
-            </button>
-            <button
-              className="btn btn-sm btn-error"
-              onClick={handleLogout}
-            >
-              Logout
             </button>
           </div>
         </div>
@@ -326,11 +315,9 @@ const UserDashboardWindow = () => {
 
           <div className="divider"></div>
 
-          <div className="flex justify-center gap-4">
-            <button className="btn btn-primary" onClick={() => navigate("/ride-request")}>Request a Ride</button>
+          <div className="flex justify-center gap-4 flex-wrap">
             <button className="btn btn-primary" onClick={() => handleOpenCart()}>See Cart</button>
             <button className="btn btn-outline">View Order History</button>
-            <button className="btn btn-outline">Browse Restaurants</button>
           </div>
         </div>
       </div>

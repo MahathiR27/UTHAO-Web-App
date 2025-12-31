@@ -1,9 +1,13 @@
 import DriverDashboardWindow from "../components/DriverDashboardWindow";
+import Navbar from "../components/Navbar";
 
 const DriverDashboardPage = () => {
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-4">
-      <DriverDashboardWindow />
+    <div className="min-h-screen bg-base-300">
+      <Navbar />
+      <div className="flex flex-col items-center justify-center p-4">
+        <DriverDashboardWindow />
+      </div>
     </div>
   );
 };

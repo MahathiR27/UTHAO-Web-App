@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { Calendar, Check, X, Tag } from "lucide-react";
-import { getUser, getToken, removeToken } from "../utils/authUtils";
+import { getUser, getToken } from "../utils/authUtils";
 
 const RestaurantDashboardWindow = () => {
   const navigate = useNavigate();
@@ -285,12 +285,6 @@ const RestaurantDashboardWindow = () => {
     }
   };
 
-  const handleLogout = () => {
-    removeToken();
-    toast.success("Logged out successfully");
-    navigate("/login");
-  };
-
   if (loading) {
     return (
       <div className="card w-full max-w-4xl bg-base-100 shadow-xl border border-base-300">
@@ -320,11 +314,8 @@ const RestaurantDashboardWindow = () => {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-2xl font-bold">Restaurant Profile</h2>
           <div>
-            <button className="btn btn-sm btn-outline mr-2" onClick={handleToggleEditProfile}>
+            <button className="btn btn-sm btn-outline" onClick={handleToggleEditProfile}>
               {editingProfile ? "Close" : "Edit Profile"}
-            </button>
-            <button className="btn btn-sm btn-error" onClick={handleLogout}>
-              Logout
             </button>
           </div>
         </div>
