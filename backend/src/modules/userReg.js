@@ -1,11 +1,16 @@
-import mongoose, { Schema } from "mongoose";
+import mongoose from "mongoose";
 
 const userDetailsSchema = new mongoose.Schema(
 
     {
-        UserName:{
+        fullName: {
             type: String,
             required: true
+        },
+        UserName:{
+            type: String,
+            required: true,
+            unique: true
         },
         email: {
             type: String,
@@ -39,31 +44,11 @@ const userDetailsSchema = new mongoose.Schema(
             default: []
         },
         reservations: {
-            type: [
-                {
-                    restaurantId: { type: mongoose.Schema.Types.ObjectId, ref: 'restaurantReg' },
-                    name: { type: String, required: true },
-                    address: { type: String, required: true },
-                    date: { type: Date, required: true },
-                    numberOfPeople: { type: Number, required: true },
-                    status: { type: String, enum: ['pending', 'confirmed', 'cancelled'], default: 'pending' },
-                    createdAt: { type: Date, default: Date.now }
-                }
-            ],
+            type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Reservation' }],
             default: []
         },
         orders: {
-            type: [
-                {
-                    orderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Order' },
-                    restaurantId: { type: mongoose.Schema.Types.ObjectId, ref: 'restaurantReg' },
-                    menuItemId: { type: String },
-                    date: { type: Date, required: true },
-                    price: { type: Number, required: true },
-                    deliveryAddress: { type: String, required: true },
-                    status: { type: String, enum: ['pending', 'confirmed', 'preparing', 'delivering', 'delivered', 'cancelled'], default: 'pending' },
-                }
-            ],
+            type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],
             default: []
         }
 
@@ -71,6 +56,6 @@ const userDetailsSchema = new mongoose.Schema(
 
 )
 
-const User = mongoose.model('userReg', userDetailsSchema)
+const User = mongoose.model('userReg', userDetailsSchema);
 
-export default User
+export default User;

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { X } from "lucide-react";
-import { getUser, getAuthHeaders, removeToken } from "../utils/authUtils";
+import { getUser, getToken } from "../utils/authUtils";
 
 const UserDashboardWindow = () => {
   const navigate = useNavigate();
@@ -13,6 +13,7 @@ const UserDashboardWindow = () => {
   const [loading, setLoading] = useState(true);
   const [editingProfile, setEditingProfile] = useState(false);
   const [editForm, setEditForm] = useState({
+    fullName: "",
     UserName: "",
     email: "",
     phone: "",
@@ -67,15 +68,16 @@ const UserDashboardWindow = () => {
         const response = await axios({
           method: 'get',
           url: "http://localhost:5001/api/dashboard/get-user",
-          headers: getAuthHeaders()
+          headers: { token: getToken() }
         });
         setUser(response.data.user);
         
         // Fetch promocodes
         await fetchPromocodes();
       } catch (error) {
-        toast.error("Failed to load user details");
-        console.error(error);
+        const errorMsg = error.response?.data?.message || error.message || "Failed to load user details";
+        toast.error(errorMsg);
+        console.error("Dashboard Error:", error);
       } finally {
         setLoading(false);
       }
@@ -88,6 +90,7 @@ const UserDashboardWindow = () => {
     if (!editingProfile) {
       // Populate form with current user data when opening edit mode
       setEditForm({
+        fullName: user.fullName || "",
         UserName: user.UserName || "",
         email: user.email || "",
         phone: user.phone || "",
@@ -109,7 +112,7 @@ const UserDashboardWindow = () => {
         method: 'put',
         url: "http://localhost:5001/api/dashboard/update-user",
         data: editForm,
-        headers: getAuthHeaders()
+        headers: { token: getToken() }
       });
       setUser(res.data.user);
       setEditingProfile(false);
@@ -127,7 +130,7 @@ const UserDashboardWindow = () => {
         method: 'post',
         url: "http://localhost:5001/api/dashboard/generate-refid",
         data: {},
-        headers: getAuthHeaders()
+        headers: { token: getToken() }
       });
       setUser(res.data.user);
       toast.success("Reference ID generated successfully");
@@ -146,7 +149,7 @@ const UserDashboardWindow = () => {
       const response = await axios({
         method: 'get',
         url: "http://localhost:5001/api/dashboard/get-user-cart",
-        headers: getAuthHeaders()
+        headers: { token: getToken() }
       });
       setCartOrders(response.data.cartOrders);
       setShowCartModal(true);
@@ -163,7 +166,7 @@ const UserDashboardWindow = () => {
       await axios({
         method: 'delete',
         url: `http://localhost:5001/api/dashboard/cancel-order/${orderId}`,
-        headers: getAuthHeaders()
+        headers: { token: getToken() }
       });
       // Remove from local cart
       setCartOrders(cartOrders.filter(order => order._id !== orderId));
@@ -180,7 +183,7 @@ const UserDashboardWindow = () => {
         method: 'put',
         url: "http://localhost:5001/api/dashboard/confirm-user-orders",
         data: {},
-        headers: getAuthHeaders()
+        headers: { token: getToken() }
       });
       toast.success("All orders confirmed!");
       setShowCartModal(false);
@@ -189,12 +192,6 @@ const UserDashboardWindow = () => {
       toast.error("Failed to confirm orders");
       console.error(error);
     }
-  };
-
-  const handleLogout = () => {
-    removeToken();
-    toast.success("Logged out successfully");
-    navigate("/login");
   };
 
   if (loading) {
@@ -238,12 +235,6 @@ const UserDashboardWindow = () => {
               onClick={handleToggleEditProfile}
             >
               {editingProfile ? "Close" : "Edit Profile"}
-            </button>
-            <button
-              className="btn btn-sm btn-error"
-              onClick={handleLogout}
-            >
-              Logout
             </button>
           </div>
         </div>
@@ -304,6 +295,17 @@ const UserDashboardWindow = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="label">
+                  <span className="label-text">Full Name</span>
+                </label>
+                <input
+                  name="fullName"
+                  value={editForm.fullName}
+                  onChange={handleEditFormChange}
+                  className="input input-bordered w-full"
+                />
+              </div>
+              <div>
+                <label className="label">
                   <span className="label-text">User Name</span>
                 </label>
                 <input
@@ -362,17 +364,21 @@ const UserDashboardWindow = () => {
             <div className="avatar placeholder">
               <div className="bg-neutral text-neutral-content rounded-full w-24">
                 <span className="text-3xl">
-                  {user.UserName ? user.UserName.charAt(0).toUpperCase() : "U"}
+                  {user.fullName ? user.fullName.charAt(0).toUpperCase() : "U"}
                 </span>
               </div>
             </div>
           </div>
 
           <h3 className="text-2xl font-bold text-center mb-6">
-            {user.UserName}
+            {user.fullName || user.UserName}
           </h3>
 
           <div className="space-y-3 mb-6">
+            <div className="flex items-start">
+              <div className="font-semibold w-24">Username:</div>
+              <div className="flex-1">{user.UserName}</div>
+            </div>
             <div className="flex items-start">
               <div className="font-semibold w-24">Email:</div>
               <div className="flex-1">{user.email}</div>
@@ -389,10 +395,9 @@ const UserDashboardWindow = () => {
 
           <div className="divider"></div>
 
-          <div className="flex justify-center gap-4">
+          <div className="flex justify-center gap-4 flex-wrap">
             <button className="btn btn-primary" onClick={() => handleOpenCart()}>See Cart</button>
             <button className="btn btn-outline">View Order History</button>
-            <button className="btn btn-outline">Browse Restaurants</button>
           </div>
         </div>
       </div>

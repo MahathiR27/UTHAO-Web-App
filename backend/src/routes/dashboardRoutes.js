@@ -1,7 +1,9 @@
 import express from 'express';
-import { getRestaurant, addMenu, updateRestaurant, updateMenu } from '../controllers/restaurantController.js';
-import { getUser, updateUser, generateRefId, getUserCart, cancelOrder, confirmUserOrders, getUserPromocodes, applyPromocode, validatePromocode } from '../controllers/userController.js';
+import { getRestaurant, addMenu, updateRestaurant, updateMenu, addOffer, getOffers, updateOffer, deleteOffer } from '../controllers/restaurantController.js';
+import { getUser, updateUser, generateRefId, getUserCart, cancelOrder, confirmUserOrders } from '../controllers/userController.js';
+import { getDriver, updateDriver } from '../controllers/driverController.js';
 import { getRestaurantMenuItems, makeReservation, updateReservationStatus, makeOrder } from '../controllers/dashboardController.js';
+import { calculateFare, createRideRequest, getRequestedRides, acceptRideRequest, getRideStatus, cancelRideRequest, updateRideStatus } from '../controllers/rideController.js';
 import { verifyToken } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -11,6 +13,12 @@ router.get("/get-restaurant", verifyToken, getRestaurant);
 router.post("/add-menu", verifyToken, addMenu);
 router.put("/update-restaurant", verifyToken, updateRestaurant);
 router.put("/update-menu/:index", verifyToken, updateMenu);
+
+// Offer endpoints (protected)
+router.post("/add-offer", verifyToken, addOffer);
+router.get("/get-offers", verifyToken, getOffers);
+router.put("/update-offer/:index", verifyToken, updateOffer);
+router.delete("/delete-offer/:index", verifyToken, deleteOffer);
 
 // User endpoints (protected)
 router.get("/get-user", verifyToken, getUser);
@@ -28,9 +36,17 @@ router.get("/get-user-cart", verifyToken, getUserCart);
 router.delete("/cancel-order/:orderId", verifyToken, cancelOrder);
 router.put("/confirm-user-orders", verifyToken, confirmUserOrders);
 
-// Promocode endpoints (protected)
-router.get("/get-promocodes", verifyToken, getUserPromocodes);
-router.post("/apply-promocode", verifyToken, applyPromocode);
-router.post("/validate-promocode", verifyToken, validatePromocode);
+// Driver endpoints (protected)
+router.get("/get-driver", verifyToken, getDriver);
+router.put("/update-driver", verifyToken, updateDriver);
+
+// Ride endpoints
+router.post("/calculate-fare", calculateFare);
+router.post("/create-ride-request", verifyToken, createRideRequest);
+router.get("/get-requested-rides", verifyToken, getRequestedRides);
+router.post("/accept-ride", verifyToken, acceptRideRequest);
+router.get("/ride-status/:rideId", verifyToken, getRideStatus);
+router.put("/cancel-ride/:rideId", verifyToken, cancelRideRequest);
+router.put("/update-ride-status", verifyToken, updateRideStatus);
 
 export default router;

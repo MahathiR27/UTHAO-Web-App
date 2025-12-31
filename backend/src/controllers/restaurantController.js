@@ -95,7 +95,10 @@ export const getRestaurant = async (req, res) => {
         // Get restaurant ID from JWT token
         const restaurantId = req.user.id;
 
-        const restaurant = await Restaurant.findById(restaurantId).lean();
+        const restaurant = await Restaurant.findById(restaurantId)
+            .populate('reservations')
+            .populate('orders')
+            .lean();
         if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
 
         return res.status(200).json({ restaurant });
@@ -127,3 +130,113 @@ export const addMenu = async (req, res) => {
         return res.status(500).json({ message: "Server error" });
     }
 }
+
+// ----------------------------------------- Offer Management -----------------------------------------
+
+export const addOffer = async (req, res) => {
+    try {
+        // Get restaurant ID from JWT token
+        const restaurantId = req.user.id;
+        const { title, percentage, menuItemIndices } = req.body;
+
+        if (!title || percentage === undefined) {
+            return res.status(400).json({ message: "Title and percentage are required" });
+        }
+
+        if (percentage < 0 || percentage > 100) {
+            return res.status(400).json({ message: "Percentage must be between 0 and 100" });
+        }
+
+        const restaurant = await Restaurant.findById(restaurantId);
+        if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
+
+        // Validate menu item indices
+        const indices = menuItemIndices || [];
+        for (const index of indices) {
+            if (index < 0 || index >= (restaurant.menu?.length || 0)) {
+                return res.status(400).json({ message: `Invalid menu item index: ${index}` });
+            }
+        }
+
+        restaurant.offers = restaurant.offers || [];
+        restaurant.offers.push({
+            title,
+            percentage: Number(percentage),
+            menuItemIndices: indices,
+            createdAt: new Date()
+        });
+
+        await restaurant.save();
+
+        return res.status(201).json({ message: "Offer added successfully", offers: restaurant.offers });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: "Server error" });
+    }
+};
+
+export const getOffers = async (req, res) => {
+    try {
+        // Get restaurant ID from JWT token
+        const restaurantId = req.user.id;
+
+        const restaurant = await Restaurant.findById(restaurantId).lean();
+        if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
+
+        return res.status(200).json({ offers: restaurant.offers || [] });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: "Server error" });
+    }
+};
+
+export const updateOffer = async (req, res) => {
+    try {
+        // Get restaurant ID from JWT token
+        const restaurantId = req.user.id;
+        const { index } = req.params;
+        const { title, percentage, menuItemIndices } = req.body;
+
+        const restaurant = await Restaurant.findById(restaurantId);
+        if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
+
+        const idx = Number(index);
+        if (!restaurant.offers || !restaurant.offers[idx]) {
+            return res.status(400).json({ message: "Invalid offer index" });
+        }
+
+        if (title !== undefined) restaurant.offers[idx].title = title;
+        if (percentage !== undefined) restaurant.offers[idx].percentage = Number(percentage);
+        if (menuItemIndices !== undefined) restaurant.offers[idx].menuItemIndices = menuItemIndices;
+
+        await restaurant.save();
+        return res.status(200).json({ message: "Offer updated", offers: restaurant.offers });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: "Server error" });
+    }
+};
+
+export const deleteOffer = async (req, res) => {
+    try {
+        // Get restaurant ID from JWT token
+        const restaurantId = req.user.id;
+        const { index } = req.params;
+
+        const restaurant = await Restaurant.findById(restaurantId);
+        if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
+
+        const idx = Number(index);
+        if (!restaurant.offers || !restaurant.offers[idx]) {
+            return res.status(400).json({ message: "Invalid offer index" });
+        }
+
+        restaurant.offers.splice(idx, 1);
+        await restaurant.save();
+
+        return res.status(200).json({ message: "Offer deleted", offers: restaurant.offers });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: "Server error" });
+    }
+};

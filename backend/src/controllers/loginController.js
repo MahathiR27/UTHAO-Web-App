@@ -1,5 +1,6 @@
 import User from "../modules/userReg.js";
 import Restaurant from "../modules/restaurantReg.js";
+import Driver from "../modules/driverReg.js";
 import jwt from "jsonwebtoken";
 import { sendOTP } from "./emailService.js";
 
@@ -30,6 +31,12 @@ export const login = async (req, res) => {
             userType = "restaurant";
         }
 
+        // If not found in Restaurant, try Driver collection
+        if (!user) {
+            user = await Driver.findOne({ UserName });
+            userType = "driver";
+        }
+
         // If user not found or password mismatch
         if (!user || user.password !== password) {
             return res.status(401).json({ message: "Invalid username or password" });
@@ -50,8 +57,8 @@ export const login = async (req, res) => {
         });
 
         // Try to send OTP to email (async, non-blocking)
-        sendOTP(tempEmail, otp).catch(emailErr => {
-            console.error("Email send failed:", emailErr);
+        sendOTP(tempEmail, otp).catch(e => {
+            console.error("OTP email sending failed");
         });
 
         // Always log OTP to console for development
@@ -94,12 +101,10 @@ export const verifyOTP = async (req, res) => {
         let user;
         if (storedData.userType === "user") {
             user = await User.findById(storedData.userId);
-        } else {
+        } else if (storedData.userType === "restaurant") {
             user = await Restaurant.findById(storedData.userId);
-        }
-
-        if (!user) {
-            return res.status(404).json({ message: "User not found" });
+        } else {
+            user = await Driver.findById(storedData.userId);
         }
 
         // Delete OTP after successful verification
@@ -116,7 +121,7 @@ export const verifyOTP = async (req, res) => {
                 address: user.address,
                 userType: "user"
             };
-        } else {
+        } else if (storedData.userType === "restaurant") {
             userData = {
                 id: user._id,
                 UserName: user.UserName,
@@ -126,6 +131,19 @@ export const verifyOTP = async (req, res) => {
                 RestaurantPhone: user.RestaurantPhone,
                 address: user.address,
                 userType: "restaurant"
+            };
+        } else {
+            userData = {
+                id: user._id,
+                UserName: user.UserName,
+                fullName: user.fullName,
+                email: user.email,
+                phone: user.phone,
+                address: user.address,
+                carModel: user.carModel,
+                carColor: user.carColor,
+                licensePlate: user.licensePlate,
+                userType: "driver"
             };
         }
 
