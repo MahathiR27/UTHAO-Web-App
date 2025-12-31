@@ -1,5 +1,5 @@
 import React from "react";
-import { Route, Routes } from "react-router";
+import { Route, Routes, Navigate } from "react-router";
 
 import LoginPage from "./pages/LoginPage";
 import ProfilePage from "./pages/ProfilePage";
@@ -11,20 +11,27 @@ import MenuBrowserPage from "./pages/MenuBrowserPage";
 import DriverCreatePage from "./pages/DriverCreatePage";
 import DriverDashboardPage from "./pages/DriverDashboardPage";
 import RideRequestPage from "./pages/RideRequestPage";
+import DriverRideRequestsPage from "./pages/DriverRideRequestsPage";
+import RideStatusPage from "./pages/RideStatusPage";
+import DriverActiveRidePage from "./pages/DriverActiveRidePage";
 
 const App = () => {
   return (
-    <div data-theme="luxury">
+    <div data-theme="forest">
       <Routes>
+        <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
-        <Route path="/user-dashboard" element={<ProfilePage />} />{" "}
+        <Route path="/user-dashboard" element={<ProfilePage />} />
         <Route path="/create-restaurant" element={<RestaurantCreatePage />} />
         <Route path="/restaurant-dashboard" element={<RestaurantDashboardPage />} />
         <Route path="/create-user" element={<UserCreatePage />} />
         <Route path="/create-driver" element={<DriverCreatePage />} />
         <Route path="/driver-dashboard" element={<DriverDashboardPage />} />
         <Route path="/ride-request" element={<RideRequestPage />} />
+        <Route path="/ride-status/:rideId" element={<RideStatusPage />} />
+        <Route path="/driver-ride-requests" element={<DriverRideRequestsPage />} />
+        <Route path="/driver-active-ride/:rideId" element={<DriverActiveRidePage />} />
         <Route path="/menu-browser" element={<MenuBrowserPage />} />
       </Routes>
     </div>

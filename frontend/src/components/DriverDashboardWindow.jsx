@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { getUser, getToken, removeToken } from "../utils/authUtils";
+import { getUser, getToken } from "../utils/authUtils";
 
 const DriverDashboardWindow = () => {
   const navigate = useNavigate();
@@ -87,12 +87,6 @@ const DriverDashboardWindow = () => {
     }
   };
 
-  const handleLogout = () => {
-    removeToken();
-    toast.success("Logged out successfully");
-    navigate("/login");
-  };
-
   if (loading) {
     return (
       <div className="card w-full max-w-6xl bg-base-100 shadow-xl border border-base-300">
@@ -127,12 +121,6 @@ const DriverDashboardWindow = () => {
               onClick={handleToggleEditProfile}
             >
               {editingProfile ? "Close" : "Edit Profile"}
-            </button>
-            <button
-              className="btn btn-sm btn-error"
-              onClick={handleLogout}
-            >
-              Logout
             </button>
           </div>
         </div>
