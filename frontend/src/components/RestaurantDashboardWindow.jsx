@@ -12,11 +12,20 @@ const RestaurantDashboardWindow = () => {
   const [restaurant, setRestaurant] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [menuItem, setMenuItem] = useState({ name: "", price: "", description: "" });
+  const [menuItem, setMenuItem] = useState({ name: "", price: "", description: "", prepareTime: "" });
   const [editingProfile, setEditingProfile] = useState(false);
-  const [profileForm, setProfileForm] = useState(null);
+  const [editForm, setEditForm] = useState({
+    RestaurantName: "",
+    OwnerName: "",
+    description: "",
+    address: "",
+    email: "",
+    RestaurantPhone: "",
+    OwnerPhone: "",
+    reservationLimit: 0
+  });
   const [editingIndex, setEditingIndex] = useState(null);
-  const [editMenuForm, setEditMenuForm] = useState({ name: "", price: "", description: "" });
+  const [editMenuForm, setEditMenuForm] = useState({ name: "", price: "", description: "", prepareTime: "" });
   const [reservationFilter, setReservationFilter] = useState("all"); // "all", "pending", "confirmed"
   const [selectedReservation, setSelectedReservation] = useState(null);
   const [showReservationModal, setShowReservationModal] = useState(false);
@@ -43,7 +52,6 @@ const RestaurantDashboardWindow = () => {
           headers: { token: getToken() }
         });
         setRestaurant(response.data.restaurant);
-        setProfileForm(response.data.restaurant);
       } catch (error) {
         toast.error("Failed to load restaurant details");
         console.error(error);
@@ -83,7 +91,7 @@ const RestaurantDashboardWindow = () => {
       });
 
       // Reset form
-      setMenuItem({ name: "", price: "", description: "" });
+      setMenuItem({ name: "", price: "", description: "", prepareTime: "" });
       setShowForm(false);
       toast.success("Menu item added successfully");
     } catch (error) {
@@ -92,13 +100,26 @@ const RestaurantDashboardWindow = () => {
     }
   };
   const handleToggleEditProfile = () => {
-    setEditingProfile((s) => !s);
-    setProfileForm(restaurant);
+    if (!editingProfile) {
+      // Populate form with current restaurant data when opening edit mode
+      setEditForm({
+        RestaurantName: restaurant.RestaurantName || "",
+        OwnerName: restaurant.OwnerName || "",
+        description: restaurant.description || "",
+        address: restaurant.address || "",
+        email: restaurant.email || "",
+        RestaurantPhone: restaurant.RestaurantPhone || "",
+        OwnerPhone: restaurant.OwnerPhone || "",
+        reservationLimit: restaurant.reservationLimit || 0
+      });
+    }
+    setEditingProfile(!editingProfile);
   };
 
-  const handleProfileChange = (e) => {
+  const handleEditFormChange = (e) => {
     const { name, value } = e.target;
-    setProfileForm((p) => ({ ...p, [name]: value }));
+    const processedValue = name === 'reservationLimit' ? (value === '' ? 0 : Number(value)) : value;
+    setEditForm((prev) => ({ ...prev, [name]: processedValue }));
   };
 
   const handleUpdateProfile = async (e) => {
@@ -107,7 +128,7 @@ const RestaurantDashboardWindow = () => {
       const res = await axios({
         method: 'put',
         url: "http://localhost:5001/api/dashboard/update-restaurant",
-        data: profileForm,
+        data: editForm,
         headers: { token: getToken() }
       });
       setRestaurant(res.data.restaurant);
@@ -122,12 +143,12 @@ const RestaurantDashboardWindow = () => {
   const startEditMenu = (index) => {
     setEditingIndex(index);
     const item = restaurant.menu[index];
-    setEditMenuForm({ name: item.name || "", price: item.price || "", description: item.description || "" });
+    setEditMenuForm({ name: item.name || "", price: item.price || "", description: item.description || "", prepareTime: item.prepareTime || "" });
   };
 
   const cancelEditMenu = () => {
     setEditingIndex(null);
-    setEditMenuForm({ name: "", price: "", description: "" });
+    setEditMenuForm({ name: "", price: "", description: "", prepareTime: "" });
   };
 
   const handleUpdateMenu = async (e, index) => {
@@ -320,36 +341,36 @@ const RestaurantDashboardWindow = () => {
           </div>
         </div>
 
-        {editingProfile && profileForm && (
+        {editingProfile && (
           <form onSubmit={handleUpdateProfile} className="bg-base-200 p-4 rounded-lg mb-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="label"><span className="label-text">Restaurant Name</span></label>
-                <input name="RestaurantName" value={profileForm.RestaurantName || ""} onChange={handleProfileChange} className="input input-bordered w-full" />
+                <input name="RestaurantName" value={editForm.RestaurantName} onChange={handleEditFormChange} className="input input-bordered w-full" />
               </div>
               <div>
                 <label className="label"><span className="label-text">Owner Name</span></label>
-                <input name="OwnerName" value={profileForm.OwnerName || ""} onChange={handleProfileChange} className="input input-bordered w-full" />
+                <input name="OwnerName" value={editForm.OwnerName} onChange={handleEditFormChange} className="input input-bordered w-full" />
               </div>
               <div>
                 <label className="label"><span className="label-text">Email</span></label>
-                <input name="email" value={profileForm.email || ""} onChange={handleProfileChange} className="input input-bordered w-full" />
+                <input name="email" value={editForm.email} onChange={handleEditFormChange} className="input input-bordered w-full" />
               </div>
               <div>
                 <label className="label"><span className="label-text">Restaurant Phone</span></label>
-                <input name="RestaurantPhone" value={profileForm.RestaurantPhone || ""} onChange={handleProfileChange} className="input input-bordered w-full" />
+                <input name="RestaurantPhone" value={editForm.RestaurantPhone} onChange={handleEditFormChange} className="input input-bordered w-full" />
               </div>
               <div>
                 <label className="label"><span className="label-text">Owner Phone</span></label>
-                <input name="OwnerPhone" value={profileForm.OwnerPhone || ""} onChange={handleProfileChange} className="input input-bordered w-full" />
+                <input name="OwnerPhone" value={editForm.OwnerPhone} onChange={handleEditFormChange} className="input input-bordered w-full" />
               </div>
               <div>
                 <label className="label"><span className="label-text">Address</span></label>
-                <input name="address" value={profileForm.address || ""} onChange={handleProfileChange} className="input input-bordered w-full" />
+                <input name="address" value={editForm.address} onChange={handleEditFormChange} className="input input-bordered w-full" />
               </div>
               <div className="md:col-span-2">
                 <label className="label"><span className="label-text">Description</span></label>
-                <textarea name="description" value={profileForm.description || ""} onChange={handleProfileChange} className="textarea textarea-bordered w-full" />
+                <textarea name="description" value={editForm.description} onChange={handleEditFormChange} className="textarea textarea-bordered w-full" />
               </div>
               <div>
                 <label className="label"><span className="label-text">Reservation Limit</span></label>
@@ -357,8 +378,8 @@ const RestaurantDashboardWindow = () => {
                   name="reservationLimit"
                   type="number"
                   min="0"
-                  value={profileForm.reservationLimit || 0}
-                  onChange={handleProfileChange}
+                  value={editForm.reservationLimit}
+                  onChange={handleEditFormChange}
                   className="input input-bordered w-full"
                 />
               </div>
@@ -486,7 +507,7 @@ const RestaurantDashboardWindow = () => {
                           checked={offerForm.menuItemIndices.includes(index)}
                           onChange={() => toggleMenuItemInOffer(index, false)}
                         />
-                        <span className="flex-1">{item.name} - ${item.price}</span>
+                        <span className="flex-1">{item.name} - ${item.price} ({item.prepareTime || 10} min)</span>
                       </label>
                     ))
                   ) : (
@@ -544,7 +565,7 @@ const RestaurantDashboardWindow = () => {
                               checked={editOfferForm.menuItemIndices.includes(menuIndex)}
                               onChange={() => toggleMenuItemInOffer(menuIndex, true)}
                             />
-                            <span className="flex-1">{item.name} - ${item.price}</span>
+                            <span className="flex-1">{item.name} - ${item.price} ({item.prepareTime || 10} min)</span>
                           </label>
                         ))}
                       </div>
@@ -647,16 +668,30 @@ const RestaurantDashboardWindow = () => {
                 </div>
                 <div>
                   <label className="label">
-                    <span className="label-text">Description</span>
+                    <span className="label-text">Prepare Time (minutes)</span>
                   </label>
                   <input
-                    type="text"
-                    placeholder="Optional description"
-                    value={menuItem.description}
-                    onChange={(e) => setMenuItem({ ...menuItem, description: e.target.value })}
+                    type="number"
+                    placeholder="10"
+                    min="1"
+                    value={menuItem.prepareTime}
+                    onChange={(e) => setMenuItem({ ...menuItem, prepareTime: e.target.value })}
                     className="input input-bordered w-full focus:outline-none"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="label">
+                  <span className="label-text">Description</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Optional description"
+                  value={menuItem.description}
+                  onChange={(e) => setMenuItem({ ...menuItem, description: e.target.value })}
+                  className="input input-bordered w-full focus:outline-none"
+                />
               </div>
 
               <button type="submit" className="btn btn-success w-full">
@@ -676,7 +711,7 @@ const RestaurantDashboardWindow = () => {
             restaurant.menu.map((item, index) => (
               <div key={index} className="bg-base-200 p-4 rounded-lg">
                 {editingIndex === index ? (
-                  <form onSubmit={(e) => handleUpdateMenu(e, index)} className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                  <form onSubmit={(e) => handleUpdateMenu(e, index)} className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
                     <div>
                       <label className="label"><span className="label-text">Name</span></label>
                       <input value={editMenuForm.name} onChange={(e) => setEditMenuForm((f) => ({ ...f, name: e.target.value }))} className="input input-bordered w-full" />
@@ -686,10 +721,14 @@ const RestaurantDashboardWindow = () => {
                       <input type="number" value={editMenuForm.price} onChange={(e) => setEditMenuForm((f) => ({ ...f, price: e.target.value }))} className="input input-bordered w-full" />
                     </div>
                     <div>
+                      <label className="label"><span className="label-text">Prepare Time</span></label>
+                      <input type="number" value={editMenuForm.prepareTime} onChange={(e) => setEditMenuForm((f) => ({ ...f, prepareTime: e.target.value }))} className="input input-bordered w-full" />
+                    </div>
+                    <div>
                       <label className="label"><span className="label-text">Description</span></label>
                       <input value={editMenuForm.description} onChange={(e) => setEditMenuForm((f) => ({ ...f, description: e.target.value }))} className="input input-bordered w-full" />
                     </div>
-                    <div className="md:col-span-3 flex gap-2">
+                    <div className="md:col-span-4 flex gap-2">
                       <button type="submit" className="btn btn-sm btn-success">Save</button>
                       <button type="button" onClick={cancelEditMenu} className="btn btn-sm">Cancel</button>
                     </div>
@@ -705,6 +744,9 @@ const RestaurantDashboardWindow = () => {
                     <div className="flex items-center gap-4">
                       <div className="text-xl font-bold text-primary">
                         ${parseFloat(item.price || 0).toFixed(2)}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {item.prepareTime || 10} min prep
                       </div>
                       <button className="btn btn-sm" onClick={() => startEditMenu(index)}>Edit</button>
                     </div>

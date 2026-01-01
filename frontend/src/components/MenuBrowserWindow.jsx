@@ -331,6 +331,9 @@ const MenuBrowserWindow = () => {
                       ${originalPrice.toFixed(2)}
                     </span>
                   )}
+                  <span className="text-sm text-gray-500">
+                    {item.prepareTime || 10} min prep
+                  </span>
                 </div>
                 <div className="card-actions justify-end mt-4">
                   <button

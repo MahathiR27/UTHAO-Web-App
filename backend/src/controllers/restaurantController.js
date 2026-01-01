@@ -68,7 +68,7 @@ export const updateMenu = async (req, res) => {
         // Get restaurant ID from JWT token
         const restaurantId = req.user.id;
         const { index } = req.params;
-        const { name, price, description } = req.body;
+        const { name, price, description, prepareTime } = req.body;
 
         const restaurant = await Restaurant.findById(restaurantId);
         if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
@@ -81,6 +81,7 @@ export const updateMenu = async (req, res) => {
         if (name !== undefined) restaurant.menu[idx].name = name;
         if (price !== undefined) restaurant.menu[idx].price = Number(price) || 0;
         if (description !== undefined) restaurant.menu[idx].description = description;
+        if (prepareTime !== undefined) restaurant.menu[idx].prepareTime = Number(prepareTime) || 10;
 
         await restaurant.save();
         return res.status(200).json({ message: "Menu updated", menu: restaurant.menu });
@@ -112,7 +113,7 @@ export const addMenu = async (req, res) => {
     try {
         // Get restaurant ID from JWT token
         const restaurantId = req.user.id;
-        const { name, price, description } = req.body;
+        const { name, price, description, prepareTime } = req.body;
 
         if (!name) return res.status(400).json({ message: "Menu item name is required" });
 
@@ -120,7 +121,7 @@ export const addMenu = async (req, res) => {
         if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
 
         restaurant.menu = restaurant.menu || [];
-        restaurant.menu.push({ name, price: price ? Number(price) : 0, description });
+        restaurant.menu.push({ name, price: price ? Number(price) : 0, description, prepareTime: prepareTime ? Number(prepareTime) : 10 });
 
         await restaurant.save();
 
