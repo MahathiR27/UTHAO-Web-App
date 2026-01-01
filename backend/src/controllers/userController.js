@@ -4,13 +4,32 @@ import Order from "../modules/orderSchema.js";
 import Reservation from "../modules/reservationSchema.js";
 import { sendPromocode } from "./emailService.js";
 
-// Helper function to generate random promocode
-const generateRandomPromocode = () => {
+// Helper function to generate random promocode with uniqueness check
+const generateRandomPromocode = async () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let code = '';
-    for (let i = 0; i < 8; i++) {
-        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    let isUnique = false;
+    let attempts = 0;
+    const maxAttempts = 10;
+
+    while (!isUnique && attempts < maxAttempts) {
+        code = '';
+        for (let i = 0; i < 8; i++) {
+            code += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        
+        // Check if code already exists in any user's promocodes
+        const existingUser = await User.findOne({ 'promocodes.code': code });
+        if (!existingUser) {
+            isUnique = true;
+        }
+        attempts++;
     }
+
+    if (!isUnique) {
+        throw new Error('Failed to generate unique promocode');
+    }
+
     return code;
 };
 
@@ -31,21 +50,23 @@ export const createUser = async (req, res) => {
 
         // Check if referral code provided
         let promocodes = [];
+        let referralWarning = null;
         if (referralCode && referralCode.trim()) {
             // Validate referral code exists
             const referrer = await User.findOne({ refId: referralCode });
             if (!referrer) {
-                return res.status(400).json({ message: "Invalid referral code. The code you entered does not exist." });
-            }
-
-            // Generate 3 random promocodes
-            for (let i = 0; i < 3; i++) {
-                promocodes.push({
-                    code: generateRandomPromocode(),
-                    discount: generateRandomDiscount(),
-                    used: false,
-                    createdAt: new Date()
-                });
+                // Don't block registration, just warn user
+                referralWarning = "Invalid referral code. Registration completed without promotional codes.";
+            } else {
+                // Generate 3 random unique promocodes
+                for (let i = 0; i < 3; i++) {
+                    promocodes.push({
+                        code: await generateRandomPromocode(),
+                        discount: generateRandomDiscount(),
+                        used: false,
+                        createdAt: new Date()
+                    });
+                }
             }
         }
 
@@ -58,21 +79,26 @@ export const createUser = async (req, res) => {
         await newUser.save();
 
         // Send promocodes via email if any
+        let emailSent = false;
         if (promocodes.length > 0) {
             try {
                 await sendPromocode(email, promocodes);
+                emailSent = true;
             } catch (emailError) {
                 console.error("Failed to send promocode email:", emailError);
                 // Continue even if email fails
             }
         }
 
+        const responseMessage = referralWarning || 
+            (promocodes.length > 0 ? "User registered successfully with referral bonus!" : "User registered successfully");
+
         return res.status(201).json({
-            message: promocodes.length > 0 
-                ? "User registered successfully with referral bonus!" 
-                : "User registered successfully",
+            message: responseMessage,
             user: newUser,
-            promocodes: promocodes.length > 0 ? promocodes : undefined
+            promocodes: promocodes.length > 0 ? promocodes : undefined,
+            emailSent: promocodes.length > 0 ? emailSent : undefined,
+            warning: referralWarning
         });
 
     } catch(err) {
@@ -307,12 +333,18 @@ export const validatePromocode = async (req, res) => {
       return res.status(400).json({ message: "Promocode and total amount required" });
     }
 
+    // Validate and sanitize promocode format (8 uppercase alphanumeric characters)
+    const sanitizedPromocode = String(promocode).trim().toUpperCase();
+    if (!/^[A-Z0-9]{8}$/.test(sanitizedPromocode)) {
+      return res.status(400).json({ message: "Invalid promocode format", valid: false });
+    }
+
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    const promo = user.promocodes.find(p => p.code === promocode);
+    const promo = user.promocodes.find(p => p.code === sanitizedPromocode);
     if (!promo) {
       return res.status(404).json({ message: "Promocode not found", valid: false });
     }
@@ -342,32 +374,48 @@ export const validatePromocode = async (req, res) => {
 export const applyPromocode = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { promocode, totalAmount } = req.body;
+    const { promocode, totalAmount, expectedFinalAmount } = req.body;
 
     if (!promocode || totalAmount === undefined) {
       return res.status(400).json({ message: "Promocode and total amount required" });
     }
 
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
+    // Validate and sanitize promocode format (8 uppercase alphanumeric characters)
+    const sanitizedPromocode = String(promocode).trim().toUpperCase();
+    if (!/^[A-Z0-9]{8}$/.test(sanitizedPromocode)) {
+      return res.status(400).json({ message: "Invalid promocode format" });
     }
 
-    const promo = user.promocodes.find(p => p.code === promocode);
-    if (!promo) {
-      return res.status(404).json({ message: "Promocode not found" });
+    // Atomically mark promocode as used to avoid race conditions
+    const updatedUser = await User.findOneAndUpdate(
+      { 
+        _id: userId, 
+        "promocodes.code": sanitizedPromocode, 
+        "promocodes.used": false 
+      },
+      { 
+        $set: { "promocodes.$.used": true } 
+      },
+      { new: true }
+    );
+
+    // If no document was updated, promocode was already used (possibly by concurrent request)
+    if (!updatedUser) {
+      return res.status(400).json({ message: "Promocode not found or already used" });
     }
 
-    if (promo.used) {
-      return res.status(400).json({ message: "This promocode has already been used" });
-    }
-
+    const promo = updatedUser.promocodes.find(p => p.code === sanitizedPromocode);
     const discountAmount = (totalAmount * promo.discount) / 100;
     const finalAmount = totalAmount - discountAmount;
 
-    // Mark promocode as used
-    promo.used = true;
-    await user.save();
+    // Verify expected amount matches calculated amount (with small tolerance for rounding)
+    if (expectedFinalAmount !== undefined && Math.abs(finalAmount - expectedFinalAmount) > 0.01) {
+      return res.status(400).json({ 
+        message: "Price mismatch detected. Please refresh and try again.",
+        calculated: finalAmount,
+        expected: expectedFinalAmount
+      });
+    }
 
     return res.status(200).json({
       message: "Promocode applied successfully",
@@ -377,6 +425,35 @@ export const applyPromocode = async (req, res) => {
       finalAmount,
       promocode: promo.code
     });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const getUserOrders = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const orders = await Order.find({ userId })
+      .populate('restaurantId', 'RestaurantName')
+      .sort({ createdAt: -1 });
+
+    const formattedOrders = orders.map(order => ({
+      _id: order._id,
+      restaurantName: order.restaurantId?.RestaurantName || 'Unknown Restaurant',
+      restaurantId: order.restaurantId?._id,
+      menuItemId: order.menuItemId,
+      price: order.price,
+      deliveryAddress: order.deliveryAddress,
+      status: order.status,
+      createdAt: order.createdAt,
+      userRating: order.userRating,
+      userReview: order.userReview,
+      ratedAt: order.ratedAt
+    }));
+
+    return res.status(200).json({ orders: formattedOrders });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: "Server error" });

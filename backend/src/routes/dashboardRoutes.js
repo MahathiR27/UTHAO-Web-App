@@ -1,6 +1,6 @@
 import express from 'express';
-import { getRestaurant, addMenu, updateRestaurant, updateMenu, addOffer, getOffers, updateOffer, deleteOffer } from '../controllers/restaurantController.js';
-import { getUser, updateUser, generateRefId, getUserCart, cancelOrder, confirmUserOrders, getPromocodes, validatePromocode, applyPromocode } from '../controllers/userController.js';
+import { getRestaurant, addMenu, updateRestaurant, updateMenu, addOffer, getOffers, updateOffer, deleteOffer, rateRestaurant, getRestaurantReviews } from '../controllers/restaurantController.js';
+import { getUser, updateUser, generateRefId, getUserCart, cancelOrder, confirmUserOrders, getPromocodes, validatePromocode, applyPromocode, getUserOrders } from '../controllers/userController.js';
 import { getDriver, updateDriver } from '../controllers/driverController.js';
 import { getRestaurantMenuItems, makeReservation, updateReservationStatus, makeOrder } from '../controllers/dashboardController.js';
 import { calculateFare, createRideRequest, getRequestedRides, acceptRideRequest, getRideStatus, cancelRideRequest, updateRideStatus, rateDriver } from '../controllers/rideController.js';
@@ -10,6 +10,7 @@ const router = express.Router();
 
 // Restaurant endpoints (protected)
 router.get("/get-restaurant", verifyToken, getRestaurant);
+router.get("/get-restaurant-reviews", verifyToken, getRestaurantReviews);
 router.post("/add-menu", verifyToken, addMenu);
 router.put("/update-restaurant", verifyToken, updateRestaurant);
 router.put("/update-menu/:index", verifyToken, updateMenu);
@@ -38,6 +39,7 @@ router.post("/make-order", verifyToken, makeOrder);
 
 // Cart endpoints (protected)
 router.get("/get-user-cart", verifyToken, getUserCart);
+router.get("/get-user-orders", verifyToken, getUserOrders);
 router.delete("/cancel-order/:orderId", verifyToken, cancelOrder);
 router.put("/confirm-user-orders", verifyToken, confirmUserOrders);
 
@@ -54,5 +56,6 @@ router.get("/ride-status/:rideId", verifyToken, getRideStatus);
 router.put("/cancel-ride/:rideId", verifyToken, cancelRideRequest);
 router.put("/update-ride-status", verifyToken, updateRideStatus);
 router.post("/rate-driver", verifyToken, rateDriver);
+router.post("/rate-restaurant", verifyToken, rateRestaurant);
 
 export default router;

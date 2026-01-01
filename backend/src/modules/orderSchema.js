@@ -31,6 +31,23 @@ const orderSchema = new mongoose.Schema({
     createdAt: {
         type: Date,
         default: Date.now
+    },
+    userRating: {
+        type: Number,
+        default: null,
+        required: false,
+        max: 5,
+        min: 1
+    },
+    userReview: {
+        type: String,
+        default: null,
+        required: false
+    },
+    ratedAt: {
+        type: Date,
+        default: null,
+        required: false
     }
 });
 
