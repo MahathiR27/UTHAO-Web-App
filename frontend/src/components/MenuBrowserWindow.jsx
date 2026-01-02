@@ -5,6 +5,8 @@ import toast from "react-hot-toast";
 import { ShoppingCart, Calendar } from "lucide-react";
 import { getUser, getToken } from "../utils/authUtils";
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001';
+
 const MenuBrowserWindow = () => {
   const location = useLocation();
   const params = new URLSearchParams(location.search);
@@ -24,8 +26,28 @@ const MenuBrowserWindow = () => {
     numberOfPeople: ""
   });
   const [orderForm, setOrderForm] = useState({
-    deliveryAddress: ""
+    deliveryAddress: "",
+    promocode: ""
   });
+  const [promocodes, setPromocodes] = useState([]);
+  const [appliedDiscount, setAppliedDiscount] = useState(null);
+  const [validatingPromo, setValidatingPromo] = useState(false);
+
+  // Reusable function to fetch promocodes
+  const fetchPromocodes = async () => {
+    if (currentUser) {
+      try {
+        const response = await axios({
+          method: 'get',
+          url: `${API_BASE_URL}/api/dashboard/get-promocodes`,
+          headers: { token: getToken() }
+        });
+        setPromocodes(response.data.promocodes.filter(p => !p.used) || []);
+      } catch (error) {
+        console.log("No promocodes found");
+      }
+    }
+  };
 
   // Fetch restaurant menu items on mount
   useEffect(() => {
@@ -37,7 +59,7 @@ const MenuBrowserWindow = () => {
     const fetchRestaurantMenu = async () => {
       try {
         const response = await axios.get(
-          `http://localhost:5001/api/dashboard/get-restaurant-menu/${restaurantId}`
+          `${API_BASE_URL}/api/dashboard/get-restaurant-menu/${restaurantId}`
         );
         setRestaurant(response.data.restaurant);
         setMenuItems(response.data.menuItems || []);
@@ -50,7 +72,8 @@ const MenuBrowserWindow = () => {
     };
 
     fetchRestaurantMenu();
-  }, [restaurantId]);
+    fetchPromocodes();
+  }, [restaurantId, currentUser]);
 
   const handleOrder = (menuItem) => {
     setSelectedMenuItem(menuItem);
@@ -100,7 +123,7 @@ const MenuBrowserWindow = () => {
     try {
       const response = await axios({
         method: 'post',
-        url: `http://localhost:5001/api/dashboard/make-reservation/${restaurantId}`,
+        url: `${API_BASE_URL}/api/dashboard/make-reservation/${restaurantId}`,
         data: reservationForm,
         headers: { token: getToken() }
       });
@@ -142,6 +165,41 @@ const MenuBrowserWindow = () => {
     setOrderForm(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleValidatePromocode = async () => {
+    if (!orderForm.promocode.trim()) {
+      setAppliedDiscount(null);
+      return;
+    }
+
+    setValidatingPromo(true);
+    try {
+      const menuIndex = menuItems.findIndex(item => item._id === selectedMenuItem._id);
+      const offer = getMenuItemOffer(menuIndex);
+      const originalPrice = selectedMenuItem.price || 0;
+      const discountedPrice = offer ? getDiscountedPrice(originalPrice, offer.percentage) : originalPrice;
+
+      const response = await axios({
+        method: 'post',
+        url: `${API_BASE_URL}/api/dashboard/validate-promocode`,
+        data: {
+          promocode: orderForm.promocode,
+          totalAmount: discountedPrice
+        },
+        headers: { token: getToken() }
+      });
+
+      if (response.data.valid) {
+        setAppliedDiscount(response.data);
+        toast.success(`${response.data.discount}% discount applied! 🎉`);
+      }
+    } catch (error) {
+      setAppliedDiscount(null);
+      toast.error(error.response?.data?.message || "Invalid promocode");
+    } finally {
+      setValidatingPromo(false);
+    }
+  };
+
   const handleMakeOrder = async (e) => {
     e.preventDefault();
 
@@ -156,24 +214,54 @@ const MenuBrowserWindow = () => {
     }
 
     try {
+      const menuIndex = menuItems.findIndex(item => item._id === selectedMenuItem._id);
+      const offer = getMenuItemOffer(menuIndex);
+      const originalPrice = selectedMenuItem.price || 0;
+      let finalPrice = offer ? getDiscountedPrice(originalPrice, offer.percentage) : originalPrice;
+
+      // Apply promocode if validated
+      if (appliedDiscount && orderForm.promocode) {
+        try {
+          const applyResponse = await axios({
+            method: 'post',
+            url: `${API_BASE_URL}/api/dashboard/apply-promocode`,
+            data: {
+              promocode: orderForm.promocode,
+              totalAmount: finalPrice,
+              expectedFinalAmount: appliedDiscount.finalAmount
+            },
+            headers: { token: getToken() }
+          });
+          finalPrice = applyResponse.data.finalAmount;
+        } catch (promoError) {
+          toast.error("Failed to apply promocode. Proceeding with original price.");
+          console.error("Promocode application error:", promoError);
+          // Continue with non-discounted price
+        }
+      }
+
       const orderData = {
         restaurantId: restaurantId,
         menuItemId: selectedMenuItem._id || selectedMenuItem.id,
-        price: selectedMenuItem.price || 0,
+        price: finalPrice,
         deliveryAddress: orderForm.deliveryAddress
       };
 
       const response = await axios({
         method: 'post',
-        url: `http://localhost:5001/api/dashboard/make-order`,
+        url: `${API_BASE_URL}/api/dashboard/make-order`,
         data: orderData,
         headers: { token: getToken() }
       });
 
       toast.success("Order placed successfully!");
       setShowOrderModal(false);
-      setOrderForm({ deliveryAddress: "" });
+      setOrderForm({ deliveryAddress: "", promocode: "" });
       setSelectedMenuItem(null);
+      setAppliedDiscount(null);
+
+      // Refresh promocodes using shared function
+      await fetchPromocodes();
     } catch (error) {
       console.error("Order error:", error);
       toast.error(error.response?.data?.message || "Failed to place order");
@@ -182,8 +270,9 @@ const MenuBrowserWindow = () => {
 
   const closeOrderModal = () => {
     setShowOrderModal(false);
-    setOrderForm({ deliveryAddress: "" });
+    setOrderForm({ deliveryAddress: "", promocode: "" });
     setSelectedMenuItem(null);
+    setAppliedDiscount(null);
   };
 
   if (loading) {
@@ -436,7 +525,8 @@ const MenuBrowserWindow = () => {
         const offer = getMenuItemOffer(menuIndex);
         const originalPrice = selectedMenuItem.price || 0;
         const discountedPrice = offer ? getDiscountedPrice(originalPrice, offer.percentage) : null;
-        const finalPrice = discountedPrice !== null ? discountedPrice : originalPrice;
+        const basePrice = discountedPrice !== null ? discountedPrice : originalPrice;
+        const finalPrice = appliedDiscount ? appliedDiscount.finalAmount : basePrice;
 
         return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -481,6 +571,66 @@ const MenuBrowserWindow = () => {
                     className="textarea textarea-bordered h-20"
                     required
                   />
+                </div>
+
+                {promocodes.length > 0 && (
+                  <div className="form-control mb-4">
+                    <label className="label">
+                      <span className="label-text">Have a promocode?</span>
+                    </label>
+                    <div className="flex gap-2">
+                      <select
+                        name="promocode"
+                        value={orderForm.promocode}
+                        onChange={handleOrderChange}
+                        className="select select-bordered flex-1"
+                      >
+                        <option value="">Select a promocode</option>
+                        {promocodes.map(promo => (
+                          <option key={promo.code} value={promo.code}>
+                            {promo.code} - {promo.discount}% OFF
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={handleValidatePromocode}
+                        className="btn btn-secondary btn-sm"
+                        disabled={validatingPromo}
+                      >
+                        {validatingPromo ? "..." : "Apply"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {appliedDiscount && (
+                  <div className="alert alert-success mb-4 py-2">
+                    <div className="flex items-center justify-between w-full">
+                      <span className="text-sm">
+                        🎉 {appliedDiscount.discount}% discount applied!
+                      </span>
+                      <span className="text-sm font-bold">
+                        -${appliedDiscount.discountAmount.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="bg-base-200 p-3 rounded-lg mb-4">
+                  <div className="flex justify-between items-center">
+                    <span className="font-semibold">Total Amount:</span>
+                    <div className="text-right">
+                      {appliedDiscount && (
+                        <div className="text-sm text-gray-500 line-through">
+                          ${basePrice.toFixed(2)}
+                        </div>
+                      )}
+                      <span className="text-xl font-bold text-primary">
+                        ${finalPrice.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="modal-action">

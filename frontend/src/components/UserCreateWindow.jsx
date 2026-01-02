@@ -12,6 +12,7 @@ const UserCreateWindow = () => {
     password: "",
     phone: "",
     address: "",
+    referralCode: "",
   });
 
   const handleChange = (e) => {
@@ -29,7 +30,15 @@ const UserCreateWindow = () => {
         formData
       );
 
-      toast.success("User Registered Successfully! Please login to continue.");
+      // Check if user received promocodes from referral
+      if (res.data.promocodes && res.data.promocodes.length > 0) {
+        toast.success(
+          `🎉 Welcome! You've received ${res.data.promocodes.length} exclusive discount codes! Check your email for the codes. 💌`,
+          { duration: 6000 }
+        );
+      } else {
+        toast.success("User Registered Successfully! Please login to continue.");
+      }
 
       setFormData({
         fullName: "",
@@ -38,6 +47,7 @@ const UserCreateWindow = () => {
         password: "",
         phone: "",
         address: "",
+        referralCode: "",
       });
 
       navigate("/login");
@@ -141,6 +151,26 @@ const UserCreateWindow = () => {
               onChange={handleChange}
               className="input input-bordered w-full focus:outline-none"
             />
+          </div>
+
+          <div>
+            <label className="label">
+              <span className="label-text">Referral Code</span>
+              <span className="label-text-alt text-xs text-base-content/60">Optional</span>
+            </label>
+            <input
+              type="text"
+              name="referralCode"
+              placeholder="Enter referral code (optional)"
+              value={formData.referralCode}
+              onChange={handleChange}
+              className="input input-bordered w-full focus:outline-none"
+            />
+            <label className="label">
+              <span className="label-text-alt text-xs text-base-content/60">
+                💡 Have a referral code? Get 3 exclusive promocodes!
+              </span>
+            </label>
           </div>
 
           <button type="submit" className="btn btn-primary w-full">

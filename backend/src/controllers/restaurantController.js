@@ -1,4 +1,5 @@
 import Restaurant from "../modules/restaurantReg.js";
+import Order from "../modules/orderSchema.js";
 
 export const  createRestaurant = async (req, res) => {
     try {
@@ -236,6 +237,94 @@ export const deleteOffer = async (req, res) => {
         await restaurant.save();
 
         return res.status(200).json({ message: "Offer deleted", offers: restaurant.offers });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: "Server error" });
+    }
+};
+
+export const rateRestaurant = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { restaurantId, orderId, rating, review } = req.body;
+
+        // Validate rating
+        if (!rating || rating < 1 || rating > 5) {
+            return res.status(400).json({ message: "Rating must be between 1 and 5" });
+        }
+
+        // Check if order exists and belongs to user
+        const order = await Order.findById(orderId);
+        if (!order) {
+            return res.status(404).json({ message: "Order not found" });
+        }
+
+        if (order.userId.toString() !== userId) {
+            return res.status(403).json({ message: "Unauthorized to rate this order" });
+        }
+
+        if (order.restaurantId.toString() !== restaurantId) {
+            return res.status(400).json({ message: "Order does not belong to this restaurant" });
+        }
+
+        // Check if order is delivered
+        if (order.status !== 'delivered') {
+            return res.status(400).json({ message: "You can only rate after the order is delivered" });
+        }
+
+        // Check if already rated
+        if (order.userRating) {
+            return res.status(400).json({ message: "You have already rated this order" });
+        }
+
+        // Update order with rating and review
+        order.userRating = rating;
+        order.userReview = review || null;
+        order.ratedAt = new Date();
+        await order.save();
+
+        // Update restaurant rating
+        const restaurant = await Restaurant.findById(restaurantId);
+        if (!restaurant) {
+            return res.status(404).json({ message: "Restaurant not found" });
+        }
+
+        restaurant.totalRatings = (restaurant.totalRatings || 0) + rating;
+        restaurant.numberOfRatings = (restaurant.numberOfRatings || 0) + 1;
+        restaurant.rating = restaurant.totalRatings / restaurant.numberOfRatings;
+        await restaurant.save();
+
+        return res.status(200).json({
+            message: "Restaurant rated successfully",
+            rating: restaurant.rating,
+            numberOfRatings: restaurant.numberOfRatings
+        });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: "Server error" });
+    }
+};
+
+export const getRestaurantReviews = async (req, res) => {
+    try {
+        const restaurantId = req.user.id;
+
+        const orders = await Order.find({ 
+            restaurantId, 
+            userRating: { $ne: null }
+        })
+        .populate('userId', 'fullName UserName')
+        .sort({ ratedAt: -1 });
+
+        const reviews = orders.map(order => ({
+            _id: order._id,
+            userName: order.userId?.fullName || order.userId?.UserName || 'Anonymous',
+            rating: order.userRating,
+            review: order.userReview,
+            ratedAt: order.ratedAt
+        }));
+
+        return res.status(200).json({ reviews });
     } catch (err) {
         console.error(err);
         return res.status(500).json({ message: "Server error" });

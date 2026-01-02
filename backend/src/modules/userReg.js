@@ -32,6 +32,17 @@ const userDetailsSchema = new mongoose.Schema(
             unique: true,
             sparse: true
         },
+        promocodes: {
+            type: [
+                {
+                    code: { type: String, required: true },
+                    discount: { type: Number, required: true }, // Percentage discount
+                    used: { type: Boolean, default: false },
+                    createdAt: { type: Date, default: Date.now }
+                }
+            ],
+            default: []
+        },
         reservations: {
             type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Reservation' }],
             default: []

@@ -1,20 +1,25 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router";
-import { MapPin, Navigation, Clock, Route, Car, X, Shield, User, Phone, CheckCircle, Banknote } from "lucide-react";
+import { MapPin, Navigation, Clock, Route, Car, X, Shield, User, Phone, CheckCircle, Banknote, Star } from "lucide-react";
 import toast from "react-hot-toast";
 import axios from "axios";
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001';
 
 const RideStatusWindow = () => {
   const navigate = useNavigate();
   const { rideId } = useParams();
   const [ride, setRide] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [rating, setRating] = useState(0);
+  const [hoveredRating, setHoveredRating] = useState(0);
+  const [submittingRating, setSubmittingRating] = useState(false);
 
   const fetchRideStatus = async () => {
     try {
       const token = localStorage.getItem("token");
       const response = await axios.get(
-        `http://localhost:5001/api/dashboard/ride-status/${rideId}`,
+        `${API_BASE_URL}/api/dashboard/ride-status/${rideId}`,
         { headers: { token: token } }
       );
       setRide(response.data);
@@ -35,7 +40,7 @@ const RideStatusWindow = () => {
     try {
       const token = localStorage.getItem("token");
       await axios.put(
-        `http://localhost:5001/api/dashboard/cancel-ride/${rideId}`,
+        `${API_BASE_URL}/api/dashboard/cancel-ride/${rideId}`,
         {},
         { headers: { token: token } }
       );
@@ -43,6 +48,28 @@ const RideStatusWindow = () => {
       navigate("/ride-request");
     } catch (error) {
       toast.error("Failed to cancel ride");
+    }
+  };
+
+  const handleRateDriver = async (selectedRating) => {
+    if (submittingRating) return;
+    
+    setSubmittingRating(true);
+    try {
+      const token = localStorage.getItem("token");
+      await axios.post(
+        `${API_BASE_URL}/api/dashboard/rate-driver`,
+        { rideId, rating: selectedRating },
+        { headers: { token: token } }
+      );
+      setRating(selectedRating);
+      toast.success(`Thank you for rating ${selectedRating} star${selectedRating > 1 ? 's' : ''}! 🌟`);
+      // Refresh ride data to get updated rating
+      await fetchRideStatus();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to submit rating");
+    } finally {
+      setSubmittingRating(false);
     }
   };
 
@@ -170,6 +197,54 @@ const RideStatusWindow = () => {
                 <div>
                   <p className="font-semibold">{ride.driverId.fullName || "Driver"}</p>
                   <p className="text-xs text-base-content/60">{ride.driverId.phone || "N/A"}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Rating Section */}
+            {!ride.userRating ? (
+              <div className="bg-base-200 rounded-xl p-6 mb-4">
+                <p className="text-center font-semibold mb-3">How was your ride?</p>
+                <div className="flex justify-center gap-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      onClick={() => handleRateDriver(star)}
+                      onMouseEnter={() => setHoveredRating(star)}
+                      onMouseLeave={() => setHoveredRating(0)}
+                      disabled={submittingRating}
+                      className="btn btn-ghost btn-sm p-0"
+                    >
+                      <Star
+                        className={`w-8 h-8 transition-all ${
+                          star <= (hoveredRating || rating)
+                            ? "fill-warning text-warning"
+                            : "text-base-content/30"
+                        }`}
+                      />
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-center text-base-content/60 mt-2">
+                  Tap a star to rate your driver
+                </p>
+              </div>
+            ) : (
+              <div className="bg-success/10 rounded-xl p-4 mb-4 text-center">
+                <p className="text-sm text-success font-semibold mb-2">
+                  ✓ Thank you for rating!
+                </p>
+                <div className="flex justify-center gap-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Star
+                      key={star}
+                      className={`w-5 h-5 ${
+                        star <= ride.userRating
+                          ? "fill-warning text-warning"
+                          : "text-base-content/30"
+                      }`}
+                    />
+                  ))}
                 </div>
               </div>
             )}

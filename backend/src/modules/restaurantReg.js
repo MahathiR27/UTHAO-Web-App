@@ -78,6 +78,23 @@ const restaurantDetailsSchema = new mongoose.Schema(
         orders: {
             type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],
             default: []
+        },
+        rating: {
+            type: Number,
+            default: 0,
+            required: false,
+            max: 5,
+            min: 0
+        },
+        totalRatings: {
+            type: Number,
+            default: 0,
+            required: false
+        },
+        numberOfRatings: {
+            type: Number,
+            default: 0,
+            required: false
         }
 
     }
