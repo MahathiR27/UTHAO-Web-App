@@ -38,6 +38,18 @@ const restaurantDetailsSchema = new mongoose.Schema(
             type: String,
             required: true
         },
+        cuisine: {
+            type: String,
+            required: false,
+            default: "General"
+        },
+        rating: {
+            type: Number,
+            required: false,
+            default: 0,
+            min: 0,
+            max: 5
+        },
         reservationLimit: {
             type: Number,
             required: false,

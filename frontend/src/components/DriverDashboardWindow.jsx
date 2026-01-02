@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { getUser, getToken, removeToken } from "../utils/authUtils";
+import { getUser, getToken } from "../utils/authUtils";
 
 const DriverDashboardWindow = () => {
   const navigate = useNavigate();
@@ -11,6 +11,7 @@ const DriverDashboardWindow = () => {
   const [driver, setDriver] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editingProfile, setEditingProfile] = useState(false);
+  const [activeRideId, setActiveRideId] = useState(null);
   const [editForm, setEditForm] = useState({
     fullName: "",
     UserName: "",
@@ -37,6 +38,21 @@ const DriverDashboardWindow = () => {
           headers: { token: getToken() }
         });
         setDriver(response.data.driver);
+        
+        // Check for active ride using the new endpoint
+        try {
+          const activeRideResponse = await axios({
+            method: 'get',
+            url: "http://localhost:5001/api/dashboard/get-driver-active-ride",
+            headers: { token: getToken() }
+          });
+          
+          if (activeRideResponse.data.activeRide) {
+            setActiveRideId(activeRideResponse.data.activeRide._id);
+          }
+        } catch (rideError) {
+          // Silently handle no active rides
+        }
       } catch (error) {
         toast.error("Failed to load driver details");
         console.error(error);
@@ -87,10 +103,12 @@ const DriverDashboardWindow = () => {
     }
   };
 
-  const handleLogout = () => {
-    removeToken();
-    toast.success("Logged out successfully");
-    navigate("/login");
+  const handleActiveDeliveries = () => {
+    if (activeRideId) {
+      navigate(`/driver-active-ride/${activeRideId}`);
+    } else {
+      navigate('/driver-ride-requests');
+    }
   };
 
   if (loading) {
@@ -127,12 +145,6 @@ const DriverDashboardWindow = () => {
               onClick={handleToggleEditProfile}
             >
               {editingProfile ? "Close" : "Edit Profile"}
-            </button>
-            <button
-              className="btn btn-sm btn-error"
-              onClick={handleLogout}
-            >
-              Logout
             </button>
           </div>
         </div>
@@ -295,9 +307,9 @@ const DriverDashboardWindow = () => {
           <div className="divider"></div>
 
           <div className="flex justify-center gap-4">
-            <button className="btn btn-primary">View Delivery Requests</button>
-            <button className="btn btn-outline">Active Deliveries</button>
-            <button className="btn btn-outline">Earnings</button>
+            <button className="btn btn-primary" onClick={handleActiveDeliveries}>
+              Active Deliveries
+            </button>
           </div>
         </div>
       </div>

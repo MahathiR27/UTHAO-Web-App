@@ -2,6 +2,7 @@ import User from "../modules/userReg.js";
 import Restaurant from "../modules/restaurantReg.js";
 import Order from "../modules/orderSchema.js";
 import Reservation from "../modules/reservationSchema.js";
+import RideRequest from "../modules/rideRequestSchema.js";
 
 // ----------------------------------------- REGISTRATION -----------------------------------------
 export const createUser = async (req, res) => {
@@ -216,6 +217,136 @@ export const confirmUserOrders = async (req, res) => {
     return res.status(200).json({
       message: "All orders confirmed successfully",
       confirmedCount: orderIds.length
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+// ----------------------------------------- Order History -----------------------------------------
+
+// Get user's completed order history
+export const getUserOrderHistory = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Get all completed food orders
+    const completedOrders = await Order.find({
+      userId: userId,
+      status: 'delivered'
+    }).sort({ createdAt: -1 }).lean();
+
+    // Populate menu item details
+    const orderHistory = [];
+    for (const order of completedOrders) {
+      const restaurant = await Restaurant.findById(order.restaurantId);
+      if (restaurant) {
+        const menuItemIndex = order.menuItemId.split('-').pop();
+        const menuItem = restaurant.menu ? restaurant.menu[parseInt(menuItemIndex)] : null;
+
+        orderHistory.push({
+          _id: order._id,
+          type: 'food',
+          date: order.createdAt,
+          restaurantName: restaurant.RestaurantName,
+          menuItemName: menuItem ? menuItem.name : 'Unknown Item',
+          deliveryAddress: order.deliveryAddress,
+          totalAmount: order.price,
+          status: order.status
+        });
+      }
+    }
+
+    // Get all completed rides
+    const completedRides = await RideRequest.find({
+      userId: userId,
+      status: 'completed'
+    }).sort({ completedAt: -1 }).lean();
+
+    const rideHistory = completedRides.map(ride => ({
+      _id: ride._id,
+      type: 'ride',
+      date: ride.completedAt || ride.requestedAt,
+      destination: ride.to.address,
+      fromAddress: ride.from.address,
+      distance: ride.distance,
+      duration: ride.duration,
+      totalCost: ride.price,
+      status: ride.status
+    }));
+
+    // Combine and sort by date
+    const allHistory = [...orderHistory, ...rideHistory].sort((a, b) => 
+      new Date(b.date) - new Date(a.date)
+    );
+
+    return res.status(200).json({
+      history: allHistory,
+      foodOrders: orderHistory.length,
+      rides: rideHistory.length,
+      total: allHistory.length
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Get user's ongoing orders and rides
+export const getUserOngoingActivity = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Get ongoing food orders (confirmed, preparing, delivering)
+    const ongoingOrders = await Order.find({
+      userId: userId,
+      status: { $in: ['confirmed', 'preparing', 'delivering'] }
+    }).sort({ createdAt: -1 }).lean();
+
+    // Populate menu item details
+    const ongoingFoodOrders = [];
+    for (const order of ongoingOrders) {
+      const restaurant = await Restaurant.findById(order.restaurantId);
+      if (restaurant) {
+        const menuItemIndex = order.menuItemId.split('-').pop();
+        const menuItem = restaurant.menu ? restaurant.menu[parseInt(menuItemIndex)] : null;
+
+        ongoingFoodOrders.push({
+          _id: order._id,
+          type: 'food',
+          restaurantName: restaurant.RestaurantName,
+          menuItemName: menuItem ? menuItem.name : 'Unknown Item',
+          deliveryAddress: order.deliveryAddress,
+          totalAmount: order.price,
+          status: order.status,
+          orderedAt: order.createdAt
+        });
+      }
+    }
+
+    // Get ongoing rides (accepted, started)
+    const ongoingRides = await RideRequest.find({
+      userId: userId,
+      status: { $in: ['accepted', 'started'] }
+    }).sort({ requestedAt: -1 }).lean();
+
+    const ongoingRideRequests = ongoingRides.map(ride => ({
+      _id: ride._id,
+      type: 'ride',
+      destination: ride.to.address,
+      fromAddress: ride.from.address,
+      estimatedTime: ride.duration,
+      distance: ride.distance,
+      totalCost: ride.price,
+      status: ride.status,
+      requestedAt: ride.requestedAt
+    }));
+
+    return res.status(200).json({
+      ongoingOrders: ongoingFoodOrders,
+      ongoingRides: ongoingRideRequests,
+      totalOngoing: ongoingFoodOrders.length + ongoingRideRequests.length
     });
   } catch (err) {
     console.error(err);

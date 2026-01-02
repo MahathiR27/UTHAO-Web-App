@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { X } from "lucide-react";
-import { getUser, getToken, removeToken } from "../utils/authUtils";
+import { getUser, getToken } from "../utils/authUtils";
 
 const UserDashboardWindow = () => {
   const navigate = useNavigate();
@@ -24,6 +24,12 @@ const UserDashboardWindow = () => {
   const [showCartModal, setShowCartModal] = useState(false);
   const [cartOrders, setCartOrders] = useState([]);
   const [cartLoading, setCartLoading] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [orderHistory, setOrderHistory] = useState([]);
+  const [ongoingOrders, setOngoingOrders] = useState([]);
+  const [ongoingRides, setOngoingRides] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyTab, setHistoryTab] = useState('completed');
 
   // Fetch user data on mount
   useEffect(() => {
@@ -42,8 +48,9 @@ const UserDashboardWindow = () => {
         });
         setUser(response.data.user);
       } catch (error) {
-        toast.error("Failed to load user details");
-        console.error(error);
+        const errorMsg = error.response?.data?.message || error.message || "Failed to load user details";
+        toast.error(errorMsg);
+        console.error("Dashboard Error:", error);
       } finally {
         setLoading(false);
       }
@@ -160,10 +167,51 @@ const UserDashboardWindow = () => {
     }
   };
 
-  const handleLogout = () => {
-    removeToken();
-    toast.success("Logged out successfully");
-    navigate("/login");
+  const handleOpenHistory = async () => {
+    setHistoryLoading(true);
+    setShowHistoryModal(true);
+    try {
+      // Fetch order history
+      const historyResponse = await axios({
+        method: 'get',
+        url: "http://localhost:5001/api/dashboard/get-order-history",
+        headers: { token: getToken() }
+      });
+      setOrderHistory(historyResponse.data.history || []);
+
+      // Fetch ongoing activity
+      const ongoingResponse = await axios({
+        method: 'get',
+        url: "http://localhost:5001/api/dashboard/get-ongoing-activity",
+        headers: { token: getToken() }
+      });
+      setOngoingOrders(ongoingResponse.data.ongoingOrders || []);
+      setOngoingRides(ongoingResponse.data.ongoingRides || []);
+    } catch (error) {
+      toast.error("Failed to load order history");
+      console.error(error);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const calculateTimeRemaining = (orderedAt) => {
+    const orderTime = new Date(orderedAt);
+    const deliveryTime = new Date(orderTime.getTime() + 30 * 60000); // 30 minutes
+    const now = new Date();
+    const remaining = Math.max(0, Math.ceil((deliveryTime - now) / 60000));
+    return remaining;
   };
 
   if (loading) {
@@ -207,12 +255,6 @@ const UserDashboardWindow = () => {
               onClick={handleToggleEditProfile}
             >
               {editingProfile ? "Close" : "Edit Profile"}
-            </button>
-            <button
-              className="btn btn-sm btn-error"
-              onClick={handleLogout}
-            >
-              Logout
             </button>
           </div>
         </div>
@@ -326,13 +368,173 @@ const UserDashboardWindow = () => {
 
           <div className="divider"></div>
 
-          <div className="flex justify-center gap-4">
+          <div className="flex justify-center gap-4 flex-wrap">
             <button className="btn btn-primary" onClick={() => handleOpenCart()}>See Cart</button>
-            <button className="btn btn-outline">View Order History</button>
-            <button className="btn btn-outline">Browse Restaurants</button>
+            <button className="btn btn-outline" onClick={handleOpenHistory}>View Order History</button>
           </div>
         </div>
       </div>
+
+      {/* Order History Modal */}
+      {showHistoryModal && (
+        <div className="modal modal-open">
+          <div className="modal-box w-full max-w-4xl max-h-[90vh]">
+            <h3 className="font-bold text-lg mb-4">Order & Ride History</h3>
+
+            {/* Tabs */}
+            <div className="tabs tabs-boxed mb-4">
+              <button 
+                className={`tab ${historyTab === 'completed' ? 'tab-active' : ''}`}
+                onClick={() => setHistoryTab('completed')}
+              >
+                Completed Orders
+              </button>
+              <button 
+                className={`tab ${historyTab === 'ongoing' ? 'tab-active' : ''}`}
+                onClick={() => setHistoryTab('ongoing')}
+              >
+                Ongoing Activity
+              </button>
+            </div>
+
+            {historyLoading ? (
+              <div className="flex justify-center py-8">
+                <span className="loading loading-spinner loading-lg"></span>
+              </div>
+            ) : (
+              <>
+                {/* Completed Orders Tab */}
+                {historyTab === 'completed' && (
+                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                    {orderHistory.length === 0 ? (
+                      <p className="text-center text-gray-500 py-8">No order history yet</p>
+                    ) : (
+                      orderHistory.map((item) => (
+                        <div key={item._id} className="bg-base-200 p-4 rounded-lg">
+                          {item.type === 'food' ? (
+                            <>
+                              <div className="flex justify-between items-start mb-2">
+                                <div className="flex-1">
+                                  <div className="badge badge-primary badge-sm mb-2">Food Order</div>
+                                  <h4 className="font-semibold text-lg">{item.menuItemName}</h4>
+                                  <p className="text-sm text-gray-600">{item.restaurantName}</p>
+                                  <p className="text-xs text-gray-500 mt-1">📍 {item.deliveryAddress}</p>
+                                </div>
+                                <div className="text-right">
+                                  <p className="font-bold text-primary text-lg">${item.totalAmount}</p>
+                                  <p className="text-xs text-gray-500">{formatDate(item.date)}</p>
+                                </div>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="flex justify-between items-start mb-2">
+                                <div className="flex-1">
+                                  <div className="badge badge-secondary badge-sm mb-2">Ride</div>
+                                  <h4 className="font-semibold">From: {item.fromAddress}</h4>
+                                  <h4 className="font-semibold">To: {item.destination}</h4>
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    Distance: {item.distance?.toFixed(2)} km • Duration: {Math.ceil(item.duration)} mins
+                                  </p>
+                                </div>
+                                <div className="text-right">
+                                  <p className="font-bold text-primary text-lg">${item.totalCost}</p>
+                                  <p className="text-xs text-gray-500">{formatDate(item.date)}</p>
+                                </div>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+
+                {/* Ongoing Activity Tab */}
+                {historyTab === 'ongoing' && (
+                  <div className="space-y-4 max-h-96 overflow-y-auto">
+                    {/* Ongoing Food Orders */}
+                    {ongoingOrders.length > 0 && (
+                      <div>
+                        <h4 className="font-semibold mb-2 text-sm text-gray-600">Food Orders</h4>
+                        <div className="space-y-3">
+                          {ongoingOrders.map((order) => (
+                            <div key={order._id} className="bg-base-200 p-4 rounded-lg">
+                              <div className="flex justify-between items-start mb-2">
+                                <div className="flex-1">
+                                  <div className="badge badge-warning badge-sm mb-2">
+                                    {order.status.toUpperCase()}
+                                  </div>
+                                  <h4 className="font-semibold text-lg">{order.menuItemName}</h4>
+                                  <p className="text-sm text-gray-600">{order.restaurantName}</p>
+                                  <p className="text-xs text-gray-500 mt-1">📍 {order.deliveryAddress}</p>
+                                </div>
+                                <div className="text-right">
+                                  <p className="font-bold text-primary text-lg">${order.totalAmount}</p>
+                                </div>
+                              </div>
+                              <div className="divider my-2"></div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm text-gray-500">Estimated Delivery:</span>
+                                <span className="font-semibold text-warning">
+                                  ~{calculateTimeRemaining(order.orderedAt)} mins
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Ongoing Rides */}
+                    {ongoingRides.length > 0 && (
+                      <div>
+                        <h4 className="font-semibold mb-2 text-sm text-gray-600">Rides</h4>
+                        <div className="space-y-3">
+                          {ongoingRides.map((ride) => (
+                            <div key={ride._id} className="bg-base-200 p-4 rounded-lg">
+                              <div className="flex justify-between items-start mb-2">
+                                <div className="flex-1">
+                                  <div className="badge badge-info badge-sm mb-2">
+                                    {ride.status.toUpperCase()}
+                                  </div>
+                                  <h4 className="font-semibold">From: {ride.fromAddress}</h4>
+                                  <h4 className="font-semibold">To: {ride.destination}</h4>
+                                </div>
+                                <div className="text-right">
+                                  <p className="font-bold text-primary text-lg">${ride.totalCost}</p>
+                                </div>
+                              </div>
+                              <div className="divider my-2"></div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm text-gray-500">Estimated Time:</span>
+                                <span className="font-semibold text-info">
+                                  ~{Math.ceil(ride.estimatedTime)} mins
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Empty State */}
+                    {ongoingOrders.length === 0 && ongoingRides.length === 0 && (
+                      <p className="text-center text-gray-500 py-8">No ongoing orders or rides</p>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+
+            <div className="modal-action">
+              <button className="btn" onClick={() => setShowHistoryModal(false)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Reference Modal */}
       {showRefModal && (

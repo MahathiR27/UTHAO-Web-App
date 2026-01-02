@@ -240,3 +240,42 @@ export const deleteOffer = async (req, res) => {
         return res.status(500).json({ message: "Server error" });
     }
 };
+
+// ----------------------------------------- Browse Restaurants -----------------------------------------
+
+export const getAllRestaurants = async (req, res) => {
+    try {
+        const { search, sortBy, cuisine } = req.query;
+
+        // Build query
+        let query = {};
+        
+        // Search by restaurant name
+        if (search) {
+            query.RestaurantName = { $regex: search, $options: 'i' };
+        }
+        
+        // Filter by cuisine
+        if (cuisine && cuisine !== 'all') {
+            query.cuisine = cuisine;
+        }
+
+        // Fetch restaurants
+        let restaurants = await Restaurant.find(query)
+            .select('RestaurantName OwnerName description address email RestaurantPhone cuisine rating menu')
+            .lean();
+
+        // Sort results
+        if (sortBy === 'name') {
+            restaurants.sort((a, b) => a.RestaurantName.localeCompare(b.RestaurantName));
+        } else if (sortBy === 'rating') {
+            restaurants.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+        }
+
+        return res.status(200).json({ restaurants });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: "Server error" });
+    }
+};
+
