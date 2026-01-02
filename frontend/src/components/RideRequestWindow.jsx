@@ -30,9 +30,7 @@ const RideRequestWindow = () => {
   const [rideInfo, setRideInfo] = useState(null);
 
   useEffect(() => {
-    if (!ENABLE_MAPS) return;
-    if (!isLoaded || !map) return;
-
+    if (!ENABLE_MAPS || !isLoaded || !map) return;
     navigator.geolocation?.getCurrentPosition((position) => {
       const coords = { lat: position.coords.latitude, lng: position.coords.longitude };
       setPickupCoords(coords);
@@ -132,59 +130,7 @@ const RideRequestWindow = () => {
 
   const handleRequestRide = async () => {
     if (!pickup || !destination) return toast.error("Please enter both pickup and destination");
-    
-    // For non-map mode, use manual input validation
-    if (!ENABLE_MAPS) {
-      if (!pickup.trim() || !destination.trim()) {
-        return toast.error("Please enter valid locations");
-      }
-      // Create default coordinates for non-map mode
-      const defaultPickupCoords = { lat: 23.8103, lng: 90.4125 };
-      const defaultDestCoords = { lat: 23.8203, lng: 90.4225 };
-      
-      // Calculate with default 5km and 15 minutes
-      const distanceKm = 5;
-      const durationMinutes = 15;
-      const fare = Math.round(50 + (distanceKm * 15) + (durationMinutes * 2));
-      
-      try {
-        const token = localStorage.getItem("token");
-        const user = JSON.parse(atob(token.split('.')[1]));
-        
-        const response = await axios.post(
-          "http://localhost:5001/api/dashboard/create-ride-request",
-          {
-            userId: user.id,
-            from: {
-              address: pickup,
-              lat: defaultPickupCoords.lat,
-              lng: defaultPickupCoords.lng
-            },
-            to: {
-              address: destination,
-              lat: defaultDestCoords.lat,
-              lng: defaultDestCoords.lng
-            },
-            distance: distanceKm,
-            duration: durationMinutes,
-            price: fare
-          },
-          {
-            headers: { token: token }
-          }
-        );
-
-        toast.success("Ride requested! Finding nearby drivers...");
-        navigate(`/ride-status/${response.data.rideRequest._id}`);
-      } catch (error) {
-        console.error("Error creating ride request:", error);
-        toast.error(error.response?.data?.message || "Failed to create ride request");
-      }
-      return;
-    }
-    
-    // Map-enabled mode validations
-    if (!pickupCoords || !destinationCoords) return toast.error("Please select valid locations");
+    if (ENABLE_MAPS && (!pickupCoords || !destinationCoords)) return toast.error("Please select valid locations");
     if (isSameLocation()) return toast.error("Pickup and destination cannot be the same");
     if (!rideInfo) return toast.error("Please wait for route calculation");
 
@@ -320,33 +266,23 @@ const RideRequestWindow = () => {
 
       <div className="flex-1 relative">
         {ENABLE_MAPS ? (
-          isLoaded ? (
-            <GoogleMap
-              mapContainerStyle={mapContainerStyle}
-              center={mapCenter}
-              zoom={15}
-              onLoad={setMap}
-              options={{
-                disableDefaultUI: true,
-                zoomControl: true,
-              }}
-            >
-              {pickupCoords && <Marker position={pickupCoords} label="P" />}
-              {destinationCoords && <Marker position={destinationCoords} label="D" />}
-              {directions && <DirectionsRenderer directions={directions} options={{ suppressMarkers: true }} />}
-            </GoogleMap>
-          ) : (
-            <div className="w-full h-full bg-base-200 flex items-center justify-center">
-              <div className="loading loading-spinner loading-lg"></div>
-            </div>
-          )
+          <GoogleMap
+            mapContainerStyle={mapContainerStyle}
+            center={mapCenter}
+            zoom={15}
+            onLoad={setMap}
+            options={{
+              disableDefaultUI: true,
+              zoomControl: true,
+            }}
+          >
+            {pickupCoords && <Marker position={pickupCoords} label="P" />}
+            {destinationCoords && <Marker position={destinationCoords} label="D" />}
+            {directions && <DirectionsRenderer directions={directions} options={{ suppressMarkers: true }} />}
+          </GoogleMap>
         ) : (
           <div className="w-full h-full bg-base-200 flex items-center justify-center">
-            <div className="text-center space-y-2">
-              <MapPin className="w-16 h-16 mx-auto text-base-content/30" />
-              <p className="text-xl font-semibold text-base-content/50">Map Disabled</p>
-              <p className="text-sm text-base-content/40">Please enter locations manually</p>
-            </div>
+            <p className="text-base-content/50">Map disabled</p>
           </div>
         )}
       </div>
