@@ -45,7 +45,7 @@ const Navbar = () => {
             Request Ride
           </button>
           <button
-            onClick={() => navigate("/menu-browser")}
+            onClick={() => navigate("/browse-restaurants")}
             className="btn btn-ghost btn-sm gap-2"
           >
             <UtensilsCrossed size={18} />

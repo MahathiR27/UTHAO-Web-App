@@ -95,6 +95,29 @@ export const getRequestedRides = async (req, res) => {
   }
 };
 
+// Get driver's active ride (accepted or started)
+export const getDriverActiveRide = async (req, res) => {
+  try {
+    const driverId = req.user.id; // Get driver ID from JWT token
+
+    const activeRide = await RideRequest.findOne({
+      driverId: driverId,
+      status: { $in: ["accepted", "started"] }
+    })
+      .populate("userId", "fullName phone")
+      .sort({ acceptedAt: -1 });
+
+    if (!activeRide) {
+      return res.status(200).json({ activeRide: null });
+    }
+
+    return res.status(200).json({ activeRide });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
 // Accept a ride request
 export const acceptRideRequest = async (req, res) => {
   try {

@@ -31,7 +31,6 @@ const RideRequestWindow = () => {
 
   useEffect(() => {
     if (!ENABLE_MAPS || !isLoaded || !map) return;
-
     navigator.geolocation?.getCurrentPosition((position) => {
       const coords = { lat: position.coords.latitude, lng: position.coords.longitude };
       setPickupCoords(coords);

@@ -11,6 +11,7 @@ const DriverDashboardWindow = () => {
   const [driver, setDriver] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editingProfile, setEditingProfile] = useState(false);
+  const [activeRideId, setActiveRideId] = useState(null);
   const [editForm, setEditForm] = useState({
     fullName: "",
     UserName: "",
@@ -37,6 +38,21 @@ const DriverDashboardWindow = () => {
           headers: { token: getToken() }
         });
         setDriver(response.data.driver);
+        
+        // Check for active ride using the new endpoint
+        try {
+          const activeRideResponse = await axios({
+            method: 'get',
+            url: "http://localhost:5001/api/dashboard/get-driver-active-ride",
+            headers: { token: getToken() }
+          });
+          
+          if (activeRideResponse.data.activeRide) {
+            setActiveRideId(activeRideResponse.data.activeRide._id);
+          }
+        } catch (rideError) {
+          // Silently handle no active rides
+        }
       } catch (error) {
         toast.error("Failed to load driver details");
         console.error(error);
@@ -84,6 +100,14 @@ const DriverDashboardWindow = () => {
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to update profile");
       console.error(err);
+    }
+  };
+
+  const handleActiveDeliveries = () => {
+    if (activeRideId) {
+      navigate(`/driver-active-ride/${activeRideId}`);
+    } else {
+      navigate('/driver-ride-requests');
     }
   };
 
@@ -283,9 +307,9 @@ const DriverDashboardWindow = () => {
           <div className="divider"></div>
 
           <div className="flex justify-center gap-4">
-            <button className="btn btn-primary">View Delivery Requests</button>
-            <button className="btn btn-outline">Active Deliveries</button>
-            <button className="btn btn-outline">Earnings</button>
+            <button className="btn btn-primary" onClick={handleActiveDeliveries}>
+              Active Deliveries
+            </button>
           </div>
         </div>
       </div>

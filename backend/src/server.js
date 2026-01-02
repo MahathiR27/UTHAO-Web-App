@@ -1,4 +1,4 @@
-import dashboardRoutes from "./routes/dashboardRoutes.js"
+﻿import dashboardRoutes from "./routes/dashboardRoutes.js"
 import restaurantRoutes from "./routes/restaurantRoutes.js"
 import express from "express";
 import { connectDB } from "./config/db.js";

@@ -14,6 +14,7 @@ import RideRequestPage from "./pages/RideRequestPage";
 import DriverRideRequestsPage from "./pages/DriverRideRequestsPage";
 import RideStatusPage from "./pages/RideStatusPage";
 import DriverActiveRidePage from "./pages/DriverActiveRidePage";
+import BrowseRestaurantsPage from "./pages/BrowseRestaurantsPage";
 
 const App = () => {
   return (
@@ -33,6 +34,7 @@ const App = () => {
         <Route path="/driver-ride-requests" element={<DriverRideRequestsPage />} />
         <Route path="/driver-active-ride/:rideId" element={<DriverActiveRidePage />} />
         <Route path="/menu-browser" element={<MenuBrowserPage />} />
+        <Route path="/browse-restaurants" element={<BrowseRestaurantsPage />} />
       </Routes>
     </div>
   );
