@@ -86,7 +86,6 @@ export const makeReservation = async (req, res) => {
 
     // Add reservation ID to restaurant
     restaurant.reservations.push(savedReservation._id);
-    restaurant.currentReservations += peopleCount;
     await restaurant.save();
 
     // Add reservation ID to user
@@ -117,8 +116,8 @@ export const updateReservationStatus = async (req, res) => {
       return res.status(400).json({ message: "Reservation ID and status are required" });
     }
 
-    if (!['pending', 'confirmed', 'cancelled'].includes(status)) {
-      return res.status(400).json({ message: "Invalid status. Must be pending, confirmed, or cancelled" });
+    if (!['pending', 'confirmed', 'cancelled', 'completed'].includes(status)) {
+      return res.status(400).json({ message: "Invalid status. Must be pending, confirmed, cancelled, or completed" });
     }
 
     // Find the Reservation document
@@ -138,9 +137,9 @@ export const updateReservationStatus = async (req, res) => {
 
     // Update restaurant's currentReservations
     const restaurant = await Restaurant.findById(restaurantId);
-    if (oldStatus === 'pending' && status === 'confirmed') {
+    if (status === 'confirmed' && oldStatus !== 'confirmed') {
       restaurant.currentReservations += reservation.numberOfPeople;
-    } else if ((oldStatus === 'pending' || oldStatus === 'confirmed') && status === 'cancelled') {
+    } else if ((status === 'cancelled' || status === 'completed') && oldStatus === 'confirmed') {
       restaurant.currentReservations -= reservation.numberOfPeople;
     }
     await restaurant.save();

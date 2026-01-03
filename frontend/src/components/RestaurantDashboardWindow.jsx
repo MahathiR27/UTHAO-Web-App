@@ -772,14 +772,14 @@ const RestaurantDashboardWindow = () => {
                       <div className="flex-1">
                         <h4 className="font-bold">{reservation.name}</h4>
                         <p className="text-sm text-gray-600">
-                          {reservation.numberOfPeople} people • {new Date(reservation.date).toLocaleDateString()}
+                          {reservation.numberOfPeople} people
                         </p>
-                        <p className="text-sm">{reservation.address}</p>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className={`badge ${
                           reservation.status === 'pending' ? 'badge-warning' :
                           reservation.status === 'confirmed' ? 'badge-success' :
+                          reservation.status === 'completed' ? 'badge-info' :
                           'badge-error'
                         }`}>
                           {reservation.status}
@@ -807,12 +807,6 @@ const RestaurantDashboardWindow = () => {
                 <strong>Name:</strong> {selectedReservation.name}
               </div>
               <div>
-                <strong>Address:</strong> {selectedReservation.address}
-              </div>
-              <div>
-                <strong>Date:</strong> {new Date(selectedReservation.date).toLocaleDateString()}
-              </div>
-              <div>
                 <strong>Number of People:</strong> {selectedReservation.numberOfPeople}
               </div>
               <div>
@@ -820,6 +814,7 @@ const RestaurantDashboardWindow = () => {
                 <span className={`badge ${
                   selectedReservation.status === 'pending' ? 'badge-warning' :
                   selectedReservation.status === 'confirmed' ? 'badge-success' :
+                  selectedReservation.status === 'completed' ? 'badge-info' :
                   'badge-error'
                 }`}>
                   {selectedReservation.status}
@@ -847,6 +842,15 @@ const RestaurantDashboardWindow = () => {
                     Cancel
                   </button>
                 </>
+              )}
+              {selectedReservation.status === 'confirmed' && (
+                <button
+                  onClick={() => handleReservationStatusUpdate(selectedReservation._id, 'completed')}
+                  className="btn btn-primary gap-2"
+                >
+                  <Check size={16} />
+                  Complete
+                </button>
               )}
               <button onClick={closeReservationModal} className="btn btn-ghost">
                 Close

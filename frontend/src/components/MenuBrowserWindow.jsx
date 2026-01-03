@@ -236,8 +236,7 @@ const MenuBrowserWindow = () => {
                 {restaurant.reservationLimit === 0 ? (
                   <p className="text-red-600 font-semibold">Cannot reserve - No reservation limit set</p>
                 ) : (() => {
-                  const usedSeats = restaurant.reservations?.filter(r => r.status === 'pending' || r.status === 'confirmed')
-                    .reduce((total, r) => total + r.numberOfPeople, 0) || 0;
+                  const usedSeats = restaurant.currentReservations || 0;
                   const remainingSeats = restaurant.reservationLimit - usedSeats;
                   return remainingSeats <= 0 ? (
                     <p className="text-red-600 font-semibold">Cannot reserve - All seats are booked</p>
@@ -253,15 +252,13 @@ const MenuBrowserWindow = () => {
                   onClick={openReservationModal}
                   className={`btn gap-2 ${
                     restaurant.reservationLimit === 0 ||
-                    (restaurant.reservations?.filter(r => r.status === 'pending' || r.status === 'confirmed')
-                      .reduce((total, r) => total + r.numberOfPeople, 0) || 0) >= restaurant.reservationLimit
+                    (restaurant.currentReservations || 0) >= restaurant.reservationLimit
                       ? 'btn-disabled'
                       : 'btn-secondary'
                   }`}
                   disabled={
                     restaurant.reservationLimit === 0 ||
-                    (restaurant.reservations?.filter(r => r.status === 'pending' || r.status === 'confirmed')
-                      .reduce((total, r) => total + r.numberOfPeople, 0) || 0) >= restaurant.reservationLimit
+                    (restaurant.currentReservations || 0) >= restaurant.reservationLimit
                   }
                 >
                   <Calendar size={16} />
