@@ -14,7 +14,16 @@ const RestaurantDashboardWindow = () => {
   const [showForm, setShowForm] = useState(false);
   const [menuItem, setMenuItem] = useState({ name: "", price: "", description: "" });
   const [editingProfile, setEditingProfile] = useState(false);
-  const [profileForm, setProfileForm] = useState(null);
+  const [editForm, setEditForm] = useState({
+    RestaurantName: "",
+    OwnerName: "",
+    email: "",
+    RestaurantPhone: "",
+    OwnerPhone: "",
+    address: "",
+    description: "",
+    reservationLimit: 0
+  });
   const [editingIndex, setEditingIndex] = useState(null);
   const [editMenuForm, setEditMenuForm] = useState({ name: "", price: "", description: "" });
   const [reservationFilter, setReservationFilter] = useState("all"); // "all", "pending", "confirmed"
@@ -43,7 +52,6 @@ const RestaurantDashboardWindow = () => {
           headers: { token: getToken() }
         });
         setRestaurant(response.data.restaurant);
-        setProfileForm(response.data.restaurant);
       } catch (error) {
         toast.error("Failed to load restaurant details");
         console.error(error);
@@ -92,13 +100,25 @@ const RestaurantDashboardWindow = () => {
     }
   };
   const handleToggleEditProfile = () => {
-    setEditingProfile((s) => !s);
-    setProfileForm(restaurant);
+    if (!editingProfile) {
+      // Populate form with current restaurant data when opening edit mode
+      setEditForm({
+        RestaurantName: restaurant.RestaurantName || "",
+        OwnerName: restaurant.OwnerName || "",
+        email: restaurant.email || "",
+        RestaurantPhone: restaurant.RestaurantPhone || "",
+        OwnerPhone: restaurant.OwnerPhone || "",
+        address: restaurant.address || "",
+        description: restaurant.description || "",
+        reservationLimit: restaurant.reservationLimit || 0
+      });
+    }
+    setEditingProfile(!editingProfile);
   };
 
-  const handleProfileChange = (e) => {
+  const handleEditFormChange = (e) => {
     const { name, value } = e.target;
-    setProfileForm((p) => ({ ...p, [name]: value }));
+    setEditForm((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleUpdateProfile = async (e) => {
@@ -107,12 +127,12 @@ const RestaurantDashboardWindow = () => {
       const res = await axios({
         method: 'put',
         url: "http://localhost:5001/api/dashboard/update-restaurant",
-        data: profileForm,
+        data: editForm,
         headers: { token: getToken() }
       });
       setRestaurant(res.data.restaurant);
       setEditingProfile(false);
-      toast.success("Profile updated");
+      toast.success("Profile updated successfully");
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to update profile");
       console.error(err);
@@ -320,36 +340,36 @@ const RestaurantDashboardWindow = () => {
           </div>
         </div>
 
-        {editingProfile && profileForm && (
+        {editingProfile && (
           <form onSubmit={handleUpdateProfile} className="bg-base-200 p-4 rounded-lg mb-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="label"><span className="label-text">Restaurant Name</span></label>
-                <input name="RestaurantName" value={profileForm.RestaurantName || ""} onChange={handleProfileChange} className="input input-bordered w-full" />
+                <input name="RestaurantName" value={editForm.RestaurantName} onChange={handleEditFormChange} className="input input-bordered w-full" />
               </div>
               <div>
                 <label className="label"><span className="label-text">Owner Name</span></label>
-                <input name="OwnerName" value={profileForm.OwnerName || ""} onChange={handleProfileChange} className="input input-bordered w-full" />
+                <input name="OwnerName" value={editForm.OwnerName} onChange={handleEditFormChange} className="input input-bordered w-full" />
               </div>
               <div>
                 <label className="label"><span className="label-text">Email</span></label>
-                <input name="email" value={profileForm.email || ""} onChange={handleProfileChange} className="input input-bordered w-full" />
+                <input name="email" value={editForm.email} onChange={handleEditFormChange} className="input input-bordered w-full" />
               </div>
               <div>
                 <label className="label"><span className="label-text">Restaurant Phone</span></label>
-                <input name="RestaurantPhone" value={profileForm.RestaurantPhone || ""} onChange={handleProfileChange} className="input input-bordered w-full" />
+                <input name="RestaurantPhone" value={editForm.RestaurantPhone} onChange={handleEditFormChange} className="input input-bordered w-full" />
               </div>
               <div>
                 <label className="label"><span className="label-text">Owner Phone</span></label>
-                <input name="OwnerPhone" value={profileForm.OwnerPhone || ""} onChange={handleProfileChange} className="input input-bordered w-full" />
+                <input name="OwnerPhone" value={editForm.OwnerPhone} onChange={handleEditFormChange} className="input input-bordered w-full" />
               </div>
               <div>
                 <label className="label"><span className="label-text">Address</span></label>
-                <input name="address" value={profileForm.address || ""} onChange={handleProfileChange} className="input input-bordered w-full" />
+                <input name="address" value={editForm.address} onChange={handleEditFormChange} className="input input-bordered w-full" />
               </div>
               <div className="md:col-span-2">
                 <label className="label"><span className="label-text">Description</span></label>
-                <textarea name="description" value={profileForm.description || ""} onChange={handleProfileChange} className="textarea textarea-bordered w-full" />
+                <textarea name="description" value={editForm.description} onChange={handleEditFormChange} className="textarea textarea-bordered w-full" />
               </div>
               <div>
                 <label className="label"><span className="label-text">Reservation Limit</span></label>
@@ -357,8 +377,8 @@ const RestaurantDashboardWindow = () => {
                   name="reservationLimit"
                   type="number"
                   min="0"
-                  value={profileForm.reservationLimit || 0}
-                  onChange={handleProfileChange}
+                  value={editForm.reservationLimit}
+                  onChange={handleEditFormChange}
                   className="input input-bordered w-full"
                 />
               </div>
