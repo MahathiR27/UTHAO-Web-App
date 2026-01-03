@@ -772,7 +772,7 @@ const RestaurantDashboardWindow = () => {
                       <div className="flex-1">
                         <h4 className="font-bold">{reservation.name}</h4>
                         <p className="text-sm text-gray-600">
-                          {reservation.numberOfPeople} people
+                          {reservation.numberOfPeople} people • {new Date(reservation.date).toLocaleDateString()}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
@@ -808,6 +808,9 @@ const RestaurantDashboardWindow = () => {
               </div>
               <div>
                 <strong>Number of People:</strong> {selectedReservation.numberOfPeople}
+              </div>
+              <div>
+                <strong>Date:</strong> {new Date(selectedReservation.date).toLocaleDateString()}
               </div>
               <div>
                 <strong>Status:</strong>{" "}

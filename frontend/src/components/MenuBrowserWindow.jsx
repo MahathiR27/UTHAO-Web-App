@@ -19,7 +19,8 @@ const MenuBrowserWindow = () => {
   const [selectedMenuItem, setSelectedMenuItem] = useState(null);
   const [reservationForm, setReservationForm] = useState({
     name: "",
-    numberOfPeople: ""
+    numberOfPeople: "",
+    date: ""
   });
   const [orderForm, setOrderForm] = useState({});
 
@@ -82,7 +83,7 @@ const MenuBrowserWindow = () => {
     }
 
     // Basic validation
-    if (!reservationForm.name || !reservationForm.numberOfPeople) {
+    if (!reservationForm.name || !reservationForm.numberOfPeople || !reservationForm.date) {
       toast.error("Please fill in all fields");
       return;
     }
@@ -105,7 +106,8 @@ const MenuBrowserWindow = () => {
       setShowReservationModal(false);
       setReservationForm({
         name: "",
-        numberOfPeople: ""
+        numberOfPeople: "",
+        date: ""
       });
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to make reservation");
@@ -125,7 +127,8 @@ const MenuBrowserWindow = () => {
     setShowReservationModal(false);
     setReservationForm({
       name: "",
-      numberOfPeople: ""
+      numberOfPeople: "",
+      date: ""
     });
   };
 
@@ -344,6 +347,20 @@ const MenuBrowserWindow = () => {
                     value={reservationForm.name}
                     onChange={handleReservationChange}
                     className="input input-bordered"
+                    required
+                  />
+                </div>
+                <div className="form-control mb-4">
+                  <label className="label">
+                    <span className="label-text">Date</span>
+                  </label>
+                  <input
+                    type="date"
+                    name="date"
+                    value={reservationForm.date}
+                    onChange={handleReservationChange}
+                    className="input input-bordered"
+                    min={new Date().toISOString().split('T')[0]}
                     required
                   />
                 </div>

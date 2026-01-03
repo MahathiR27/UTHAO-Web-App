@@ -42,14 +42,14 @@ export const makeReservation = async (req, res) => {
     const { restaurantId } = req.params;
     // Get user ID from JWT token
     const userId = req.user.id;
-    const { name, numberOfPeople } = req.body;
+    const { name, numberOfPeople, date } = req.body;
 
     if (!restaurantId) {
       return res.status(400).json({ message: "Restaurant ID required" });
     }
 
-    if (!name || !numberOfPeople) {
-      return res.status(400).json({ message: "Name and number of people are required" });
+    if (!name || !numberOfPeople || !date) {
+      return res.status(400).json({ message: "Name, number of people, and date are required" });
     }
 
     const peopleCount = parseInt(numberOfPeople);
@@ -79,6 +79,7 @@ export const makeReservation = async (req, res) => {
       restaurantId,
       name,
       numberOfPeople: peopleCount,
+      date: new Date(date),
       status: 'pending'
     });
 
