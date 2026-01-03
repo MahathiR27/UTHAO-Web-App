@@ -21,9 +21,7 @@ const MenuBrowserWindow = () => {
     name: "",
     numberOfPeople: ""
   });
-  const [orderForm, setOrderForm] = useState({
-    deliveryAddress: ""
-  });
+  const [orderForm, setOrderForm] = useState({});
 
   // Fetch restaurant menu items on mount
   useEffect(() => {
@@ -131,19 +129,9 @@ const MenuBrowserWindow = () => {
     });
   };
 
-  const handleOrderChange = (e) => {
-    const { name, value } = e.target;
-    setOrderForm(prev => ({ ...prev, [name]: value }));
-  };
 
-  const handleMakeOrder = async (e) => {
-    e.preventDefault();
 
-    if (!orderForm.deliveryAddress.trim()) {
-      toast.error("Please enter a delivery address");
-      return;
-    }
-
+  const handleMakeOrder = async () => {
     if (!currentUser) {
       toast.error("Please log in first");
       return;
@@ -154,7 +142,7 @@ const MenuBrowserWindow = () => {
         restaurantId: restaurantId,
         menuItemId: selectedMenuItem._id || selectedMenuItem.id,
         price: selectedMenuItem.price || 0,
-        deliveryAddress: orderForm.deliveryAddress
+        deliveryAddress: currentUser.address
       };
 
       const response = await axios({
@@ -166,7 +154,7 @@ const MenuBrowserWindow = () => {
 
       toast.success("Order placed successfully!");
       setShowOrderModal(false);
-      setOrderForm({ deliveryAddress: "" });
+      setOrderForm({});
       setSelectedMenuItem(null);
     } catch (error) {
       console.error("Order error:", error);
@@ -176,7 +164,7 @@ const MenuBrowserWindow = () => {
 
   const closeOrderModal = () => {
     setShowOrderModal(false);
-    setOrderForm({ deliveryAddress: "" });
+    setOrderForm({});
     setSelectedMenuItem(null);
   };
 
@@ -429,34 +417,21 @@ const MenuBrowserWindow = () => {
                 )}
               </div>
 
-              <form onSubmit={handleMakeOrder}>
-                <div className="form-control mb-4">
-                  <label className="label">
-                    <span className="label-text">Delivery Address</span>
-                  </label>
-                  <textarea
-                    name="deliveryAddress"
-                    value={orderForm.deliveryAddress}
-                    onChange={handleOrderChange}
-                    placeholder="Enter your full delivery address"
-                    className="textarea textarea-bordered h-20"
-                    required
-                  />
-                </div>
-
-                <div className="modal-action">
-                  <button
-                    type="button"
-                    onClick={closeOrderModal}
-                    className="btn btn-ghost"
-                  >
-                    Cancel
-                  </button>
-                  <button type="submit" className="btn btn-primary">
-                    Place Order
-                  </button>
-                </div>
-              </form>
+              <div className="modal-action">
+                <button
+                  type="button"
+                  onClick={closeOrderModal}
+                  className="btn btn-ghost"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleMakeOrder}
+                  className="btn btn-primary"
+                >
+                  Place Order
+                </button>
+              </div>
             </div>
           </div>
         </div>
