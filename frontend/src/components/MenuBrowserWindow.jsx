@@ -19,8 +19,6 @@ const MenuBrowserWindow = () => {
   const [selectedMenuItem, setSelectedMenuItem] = useState(null);
   const [reservationForm, setReservationForm] = useState({
     name: "",
-    address: "",
-    date: "",
     numberOfPeople: ""
   });
   const [orderForm, setOrderForm] = useState({
@@ -86,7 +84,7 @@ const MenuBrowserWindow = () => {
     }
 
     // Basic validation
-    if (!reservationForm.name || !reservationForm.address || !reservationForm.date || !reservationForm.numberOfPeople) {
+    if (!reservationForm.name || !reservationForm.numberOfPeople) {
       toast.error("Please fill in all fields");
       return;
     }
@@ -109,8 +107,6 @@ const MenuBrowserWindow = () => {
       setShowReservationModal(false);
       setReservationForm({
         name: "",
-        address: "",
-        date: "",
         numberOfPeople: ""
       });
     } catch (error) {
@@ -131,8 +127,6 @@ const MenuBrowserWindow = () => {
     setShowReservationModal(false);
     setReservationForm({
       name: "",
-      address: "",
-      date: "",
       numberOfPeople: ""
     });
   };
@@ -365,33 +359,6 @@ const MenuBrowserWindow = () => {
                     value={reservationForm.name}
                     onChange={handleReservationChange}
                     className="input input-bordered"
-                    required
-                  />
-                </div>
-                <div className="form-control mb-4">
-                  <label className="label">
-                    <span className="label-text">Address</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="address"
-                    value={reservationForm.address}
-                    onChange={handleReservationChange}
-                    className="input input-bordered"
-                    required
-                  />
-                </div>
-                <div className="form-control mb-4">
-                  <label className="label">
-                    <span className="label-text">Date</span>
-                  </label>
-                  <input
-                    type="date"
-                    name="date"
-                    value={reservationForm.date}
-                    onChange={handleReservationChange}
-                    className="input input-bordered"
-                    min={new Date().toISOString().split('T')[0]}
                     required
                   />
                 </div>

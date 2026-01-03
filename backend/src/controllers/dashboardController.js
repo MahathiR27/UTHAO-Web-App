@@ -42,14 +42,14 @@ export const makeReservation = async (req, res) => {
     const { restaurantId } = req.params;
     // Get user ID from JWT token
     const userId = req.user.id;
-    const { name, address, date, numberOfPeople } = req.body;
+    const { name, numberOfPeople } = req.body;
 
     if (!restaurantId) {
       return res.status(400).json({ message: "Restaurant ID required" });
     }
 
-    if (!name || !address || !date || !numberOfPeople) {
-      return res.status(400).json({ message: "All reservation fields are required" });
+    if (!name || !numberOfPeople) {
+      return res.status(400).json({ message: "Name and number of people are required" });
     }
 
     const peopleCount = parseInt(numberOfPeople);
@@ -58,14 +58,13 @@ export const makeReservation = async (req, res) => {
     }
 
     // Get restaurant
-    const restaurant = await Restaurant.findById(restaurantId).populate('reservations');
+    const restaurant = await Restaurant.findById(restaurantId);
     if (!restaurant) {
       return res.status(404).json({ message: "Restaurant not found" });
     }
 
     // Check reservation limit
-    const currentReservations = restaurant.reservations.filter(r => r.status === 'pending' || r.status === 'confirmed').length;
-    if (currentReservations + peopleCount > restaurant.reservationLimit) {
+    if (restaurant.currentReservations + peopleCount > restaurant.reservationLimit) {
       return res.status(400).json({ message: "Reservation limit exceeded for this restaurant" });
     }
 
@@ -79,8 +78,6 @@ export const makeReservation = async (req, res) => {
       userId,
       restaurantId,
       name,
-      address,
-      date: new Date(date),
       numberOfPeople: peopleCount,
       status: 'pending'
     });
@@ -89,6 +86,7 @@ export const makeReservation = async (req, res) => {
 
     // Add reservation ID to restaurant
     restaurant.reservations.push(savedReservation._id);
+    restaurant.currentReservations += peopleCount;
     await restaurant.save();
 
     // Add reservation ID to user
@@ -123,7 +121,7 @@ export const updateReservationStatus = async (req, res) => {
       return res.status(400).json({ message: "Invalid status. Must be pending, confirmed, or cancelled" });
     }
 
-    // Find and update the Reservation document
+    // Find the Reservation document
     const reservation = await Reservation.findById(reservationId);
     if (!reservation) {
       return res.status(404).json({ message: "Reservation not found" });
@@ -134,8 +132,18 @@ export const updateReservationStatus = async (req, res) => {
       return res.status(403).json({ message: "Reservation does not belong to this restaurant" });
     }
 
+    const oldStatus = reservation.status;
     reservation.status = status;
     await reservation.save();
+
+    // Update restaurant's currentReservations
+    const restaurant = await Restaurant.findById(restaurantId);
+    if (oldStatus === 'pending' && status === 'confirmed') {
+      restaurant.currentReservations += reservation.numberOfPeople;
+    } else if ((oldStatus === 'pending' || oldStatus === 'confirmed') && status === 'cancelled') {
+      restaurant.currentReservations -= reservation.numberOfPeople;
+    }
+    await restaurant.save();
 
     return res.status(200).json({
       message: "Reservation status updated successfully",

@@ -433,8 +433,7 @@ const RestaurantDashboardWindow = () => {
                 <div className="stat">
                   <div className="stat-title">Current Reservations</div>
                   <div className="stat-value text-secondary">
-                    {restaurant.reservations?.filter(r => r.status === 'pending' || r.status === 'confirmed')
-                      .reduce((total, r) => total + r.numberOfPeople, 0) || 0}
+                    {restaurant.currentReservations || 0}
                   </div>
                   <div className="stat-desc">of {restaurant.reservationLimit || 0} limit</div>
                 </div>
