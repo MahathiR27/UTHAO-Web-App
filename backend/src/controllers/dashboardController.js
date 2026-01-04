@@ -195,7 +195,7 @@ export const makeOrder = async (req, res) => {
 
     // Validate and apply promo code if provided
     if (promoCode && promoCode.trim() !== "") {
-      const trimmedCode = promoCode.trim().toUpperCase();
+      const trimmedCode = promoCode.trim();
       
       const promo = await PromoCode.findOne({ 
         code: { $regex: new RegExp(`^${trimmedCode}$`, 'i') },
