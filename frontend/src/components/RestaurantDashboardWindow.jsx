@@ -50,6 +50,8 @@ const RestaurantDashboardWindow = () => {
       return;
     }
 
+    let isMounted = true;
+
     const fetchRestaurant = async () => {
       try {
         const response = await axios({
@@ -57,6 +59,8 @@ const RestaurantDashboardWindow = () => {
           url: "http://localhost:5001/api/dashboard/get-restaurant",
           headers: { token: getToken() }
         });
+        
+        if (!isMounted) return;
         setRestaurant(response.data.restaurant);
         
         // Fetch restaurant reviews
@@ -64,22 +68,32 @@ const RestaurantDashboardWindow = () => {
           const reviewsResponse = await axios.get(
             `http://localhost:5001/api/dashboard/restaurant-reviews/${response.data.restaurant._id}`
           );
-          setReviews(reviewsResponse.data.reviews || []);
-          setAverageRating(reviewsResponse.data.averageRating || 0);
-          setTotalReviews(reviewsResponse.data.totalReviews || 0);
+          if (isMounted) {
+            setReviews(reviewsResponse.data.reviews || []);
+            setAverageRating(reviewsResponse.data.averageRating || 0);
+            setTotalReviews(reviewsResponse.data.totalReviews || 0);
+          }
         } catch (reviewError) {
           console.error("Failed to load reviews:", reviewError);
         }
       } catch (error) {
-        toast.error("Failed to load restaurant details");
-        console.error(error);
+        if (isMounted) {
+          toast.error("Failed to load restaurant details");
+          console.error(error);
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     fetchRestaurant();
-  }, [currentUser, navigate]);
+    
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Handle adding a new menu item
   const handleAddMenuItem = async (e) => {

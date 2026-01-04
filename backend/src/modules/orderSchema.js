@@ -24,6 +24,18 @@ const orderSchema = new mongoose.Schema({
         type: Number,
         required: true
     },
+    originalPrice: {
+        type: Number,
+        default: null
+    },
+    promoCode: {
+        type: String,
+        default: null
+    },
+    discountPercentage: {
+        type: Number,
+        default: 0
+    },
     deliveryAddress: {
         type: String,
         required: true
