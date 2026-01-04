@@ -19,13 +19,10 @@ const MenuBrowserWindow = () => {
   const [selectedMenuItem, setSelectedMenuItem] = useState(null);
   const [reservationForm, setReservationForm] = useState({
     name: "",
-    address: "",
-    date: "",
-    numberOfPeople: ""
+    numberOfPeople: "",
+    date: ""
   });
-  const [orderForm, setOrderForm] = useState({
-    deliveryAddress: ""
-  });
+  const [orderForm, setOrderForm] = useState({});
 
   // Fetch restaurant menu items on mount
   useEffect(() => {
@@ -86,7 +83,7 @@ const MenuBrowserWindow = () => {
     }
 
     // Basic validation
-    if (!reservationForm.name || !reservationForm.address || !reservationForm.date || !reservationForm.numberOfPeople) {
+    if (!reservationForm.name || !reservationForm.numberOfPeople || !reservationForm.date) {
       toast.error("Please fill in all fields");
       return;
     }
@@ -109,9 +106,8 @@ const MenuBrowserWindow = () => {
       setShowReservationModal(false);
       setReservationForm({
         name: "",
-        address: "",
-        date: "",
-        numberOfPeople: ""
+        numberOfPeople: "",
+        date: ""
       });
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to make reservation");
@@ -131,25 +127,14 @@ const MenuBrowserWindow = () => {
     setShowReservationModal(false);
     setReservationForm({
       name: "",
-      address: "",
-      date: "",
-      numberOfPeople: ""
+      numberOfPeople: "",
+      date: ""
     });
   };
 
-  const handleOrderChange = (e) => {
-    const { name, value } = e.target;
-    setOrderForm(prev => ({ ...prev, [name]: value }));
-  };
 
-  const handleMakeOrder = async (e) => {
-    e.preventDefault();
 
-    if (!orderForm.deliveryAddress.trim()) {
-      toast.error("Please enter a delivery address");
-      return;
-    }
-
+  const handleMakeOrder = async () => {
     if (!currentUser) {
       toast.error("Please log in first");
       return;
@@ -160,7 +145,7 @@ const MenuBrowserWindow = () => {
         restaurantId: restaurantId,
         menuItemId: selectedMenuItem._id || selectedMenuItem.id,
         price: selectedMenuItem.price || 0,
-        deliveryAddress: orderForm.deliveryAddress
+        deliveryAddress: currentUser.address
       };
 
       const response = await axios({
@@ -172,7 +157,7 @@ const MenuBrowserWindow = () => {
 
       toast.success("Order placed successfully!");
       setShowOrderModal(false);
-      setOrderForm({ deliveryAddress: "" });
+      setOrderForm({});
       setSelectedMenuItem(null);
     } catch (error) {
       console.error("Order error:", error);
@@ -182,7 +167,7 @@ const MenuBrowserWindow = () => {
 
   const closeOrderModal = () => {
     setShowOrderModal(false);
-    setOrderForm({ deliveryAddress: "" });
+    setOrderForm({});
     setSelectedMenuItem(null);
   };
 
@@ -242,8 +227,7 @@ const MenuBrowserWindow = () => {
                 {restaurant.reservationLimit === 0 ? (
                   <p className="text-red-600 font-semibold">Cannot reserve - No reservation limit set</p>
                 ) : (() => {
-                  const usedSeats = restaurant.reservations?.filter(r => r.status === 'pending' || r.status === 'confirmed')
-                    .reduce((total, r) => total + r.numberOfPeople, 0) || 0;
+                  const usedSeats = restaurant.currentReservations || 0;
                   const remainingSeats = restaurant.reservationLimit - usedSeats;
                   return remainingSeats <= 0 ? (
                     <p className="text-red-600 font-semibold">Cannot reserve - All seats are booked</p>
@@ -259,15 +243,13 @@ const MenuBrowserWindow = () => {
                   onClick={openReservationModal}
                   className={`btn gap-2 ${
                     restaurant.reservationLimit === 0 ||
-                    (restaurant.reservations?.filter(r => r.status === 'pending' || r.status === 'confirmed')
-                      .reduce((total, r) => total + r.numberOfPeople, 0) || 0) >= restaurant.reservationLimit
+                    (restaurant.currentReservations || 0) >= restaurant.reservationLimit
                       ? 'btn-disabled'
                       : 'btn-secondary'
                   }`}
                   disabled={
                     restaurant.reservationLimit === 0 ||
-                    (restaurant.reservations?.filter(r => r.status === 'pending' || r.status === 'confirmed')
-                      .reduce((total, r) => total + r.numberOfPeople, 0) || 0) >= restaurant.reservationLimit
+                    (restaurant.currentReservations || 0) >= restaurant.reservationLimit
                   }
                 >
                   <Calendar size={16} />
@@ -370,19 +352,6 @@ const MenuBrowserWindow = () => {
                 </div>
                 <div className="form-control mb-4">
                   <label className="label">
-                    <span className="label-text">Address</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="address"
-                    value={reservationForm.address}
-                    onChange={handleReservationChange}
-                    className="input input-bordered"
-                    required
-                  />
-                </div>
-                <div className="form-control mb-4">
-                  <label className="label">
                     <span className="label-text">Date</span>
                   </label>
                   <input
@@ -465,34 +434,21 @@ const MenuBrowserWindow = () => {
                 )}
               </div>
 
-              <form onSubmit={handleMakeOrder}>
-                <div className="form-control mb-4">
-                  <label className="label">
-                    <span className="label-text">Delivery Address</span>
-                  </label>
-                  <textarea
-                    name="deliveryAddress"
-                    value={orderForm.deliveryAddress}
-                    onChange={handleOrderChange}
-                    placeholder="Enter your full delivery address"
-                    className="textarea textarea-bordered h-20"
-                    required
-                  />
-                </div>
-
-                <div className="modal-action">
-                  <button
-                    type="button"
-                    onClick={closeOrderModal}
-                    className="btn btn-ghost"
-                  >
-                    Cancel
-                  </button>
-                  <button type="submit" className="btn btn-primary">
-                    Place Order
-                  </button>
-                </div>
-              </form>
+              <div className="modal-action">
+                <button
+                  type="button"
+                  onClick={closeOrderModal}
+                  className="btn btn-ghost"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleMakeOrder}
+                  className="btn btn-primary"
+                >
+                  Place Order
+                </button>
+              </div>
             </div>
           </div>
         </div>
