@@ -11,6 +11,11 @@ const orderSchema = new mongoose.Schema({
         ref: 'restaurantReg',
         required: true
     },
+    driverId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'driverReg',
+        default: null
+    },
     menuItemId: {
         type: String,
         required: true
@@ -27,6 +32,14 @@ const orderSchema = new mongoose.Schema({
         type: String,
         enum: ['pending', 'confirmed', 'preparing', 'delivering', 'delivered', 'cancelled'],
         default: 'pending'
+    },
+    acceptedAt: {
+        type: Date,
+        default: null
+    },
+    deliveredAt: {
+        type: Date,
+        default: null
     },
     createdAt: {
         type: Date,

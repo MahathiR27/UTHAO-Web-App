@@ -15,6 +15,8 @@ import DriverRideRequestsPage from "./pages/DriverRideRequestsPage";
 import RideStatusPage from "./pages/RideStatusPage";
 import DriverActiveRidePage from "./pages/DriverActiveRidePage";
 import BrowseRestaurantsPage from "./pages/BrowseRestaurantsPage";
+import DriverDeliveryRequestsPage from "./pages/DriverDeliveryRequestsPage";
+import DriverActiveDeliveryPage from "./pages/DriverActiveDeliveryPage";
 
 const App = () => {
   return (
@@ -33,6 +35,8 @@ const App = () => {
         <Route path="/ride-status/:rideId" element={<RideStatusPage />} />
         <Route path="/driver-ride-requests" element={<DriverRideRequestsPage />} />
         <Route path="/driver-active-ride/:rideId" element={<DriverActiveRidePage />} />
+        <Route path="/driver-delivery-requests" element={<DriverDeliveryRequestsPage />} />
+        <Route path="/driver-active-delivery/:orderId" element={<DriverActiveDeliveryPage />} />
         <Route path="/menu-browser" element={<MenuBrowserPage />} />
         <Route path="/browse-restaurants" element={<BrowseRestaurantsPage />} />
       </Routes>

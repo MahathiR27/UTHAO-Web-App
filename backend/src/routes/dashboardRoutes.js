@@ -4,6 +4,7 @@ import { getUser, updateUser, generateRefId, getUserCart, cancelOrder, confirmUs
 import { getDriver, updateDriver } from '../controllers/driverController.js';
 import { getRestaurantMenuItems, makeReservation, updateReservationStatus, makeOrder } from '../controllers/dashboardController.js';
 import { calculateFare, createRideRequest, getRequestedRides, acceptRideRequest, getRideStatus, cancelRideRequest, updateRideStatus, getDriverActiveRide } from '../controllers/rideController.js';
+import { getAvailableDeliveries, getDriverActiveDelivery, acceptDelivery, completeDelivery, getDeliveryStatus } from '../controllers/deliveryController.js';
 import { verifyToken } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -56,5 +57,12 @@ router.post("/accept-ride", verifyToken, acceptRideRequest);
 router.get("/ride-status/:rideId", verifyToken, getRideStatus);
 router.put("/cancel-ride/:rideId", verifyToken, cancelRideRequest);
 router.put("/update-ride-status", verifyToken, updateRideStatus);
+
+// Delivery endpoints
+router.get("/get-available-deliveries", verifyToken, getAvailableDeliveries);
+router.get("/get-driver-active-delivery", verifyToken, getDriverActiveDelivery);
+router.post("/accept-delivery", verifyToken, acceptDelivery);
+router.put("/complete-delivery", verifyToken, completeDelivery);
+router.get("/delivery-status/:orderId", verifyToken, getDeliveryStatus);
 
 export default router;

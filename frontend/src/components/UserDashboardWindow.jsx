@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { X } from "lucide-react";
@@ -7,6 +7,7 @@ import { getUser, getToken } from "../utils/authUtils";
 
 const UserDashboardWindow = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const currentUser = getUser();
 
   const [user, setUser] = useState(null);
@@ -58,6 +59,16 @@ const UserDashboardWindow = () => {
 
     fetchUser();
   }, [currentUser, navigate]);
+
+  // Check if cart should be opened from URL parameter
+  useEffect(() => {
+    const openCart = searchParams.get('openCart');
+    if (openCart === 'true' && user) {
+      handleOpenCart();
+      // Clear the parameter after opening
+      navigate('/user-dashboard', { replace: true });
+    }
+  }, [searchParams, user]);
 
   const handleToggleEditProfile = () => {
     if (!editingProfile) {
@@ -368,8 +379,7 @@ const UserDashboardWindow = () => {
 
           <div className="divider"></div>
 
-          <div className="flex justify-center gap-4 flex-wrap">
-            <button className="btn btn-primary" onClick={() => handleOpenCart()}>See Cart</button>
+          <div className="flex justify-center">
             <button className="btn btn-outline" onClick={handleOpenHistory}>View Order History</button>
           </div>
         </div>
