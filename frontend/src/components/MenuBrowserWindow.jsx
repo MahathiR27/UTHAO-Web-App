@@ -224,7 +224,7 @@ const MenuBrowserWindow = () => {
     if (!currentUser) {
       toast.error("Please log in first");
       return;
-    }
+    } 
 
     try {
       const orderData = {

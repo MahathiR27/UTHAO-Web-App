@@ -15,6 +15,7 @@ const RestaurantCreateWindow = () => {
     email: "",
     RestaurantPhone: "",
     OwnerPhone: "",
+    cuisine: "",
   });
 
   const handleChange = (e) => {
@@ -45,6 +46,7 @@ const RestaurantCreateWindow = () => {
         email: "",
         RestaurantPhone: "",
         OwnerPhone: "",
+        cuisine: "",
       });
 
       navigate("/login");
@@ -134,6 +136,26 @@ const RestaurantCreateWindow = () => {
               onChange={handleChange}
               className="textarea textarea-bordered w-full focus:outline-none"
             />
+          </div>
+
+          <div>
+            <label className="label">
+              <span className="label-text">Cuisine</span>
+            </label>
+            <select
+              name="cuisine"
+              value={formData.cuisine}
+              onChange={handleChange}
+              className="select select-bordered w-full focus:outline-none"
+              required
+            >
+              <option value="" disabled>Select cuisine</option>
+              <option value="Fast Food">Fast Food</option>
+              <option value="Deshi">Deshi</option>
+              <option value="Italian">Italian</option>
+              <option value="Chinese">Chinese</option>
+              <option value="Mexican">Mexican</option>
+            </select>
           </div>
 
           <div>
