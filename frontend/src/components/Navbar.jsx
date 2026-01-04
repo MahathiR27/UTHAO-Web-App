@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { User, LogOut, Car, UtensilsCrossed, ClipboardList } from "lucide-react";
+import { User, LogOut, Car, UtensilsCrossed, ClipboardList, Truck, ShoppingCart } from "lucide-react";
 import toast from "react-hot-toast";
 import { getUser, removeToken } from "../utils/authUtils";
 
@@ -51,6 +51,13 @@ const Navbar = () => {
             <UtensilsCrossed size={18} />
             Restaurants
           </button>
+          <button
+            onClick={() => navigate("/user-dashboard?openCart=true")}
+            className="btn btn-ghost btn-sm gap-2"
+          >
+            <ShoppingCart size={18} />
+            Cart
+          </button>
         </div>
       )}
 
@@ -63,6 +70,13 @@ const Navbar = () => {
           >
             <ClipboardList size={18} />
             Ride Requests
+          </button>
+          <button
+            onClick={() => navigate("/driver-delivery-requests")}
+            className="btn btn-ghost btn-sm gap-2"
+          >
+            <Truck size={18} />
+            Delivery Requests
           </button>
         </div>
       )}

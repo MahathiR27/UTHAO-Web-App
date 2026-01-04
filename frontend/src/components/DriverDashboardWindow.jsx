@@ -39,7 +39,7 @@ const DriverDashboardWindow = () => {
         });
         setDriver(response.data.driver);
         
-        // Check for active ride using the new endpoint
+        // Check for active ride
         try {
           const activeRideResponse = await axios({
             method: 'get',
@@ -103,7 +103,7 @@ const DriverDashboardWindow = () => {
     }
   };
 
-  const handleActiveDeliveries = () => {
+  const handleActiveRides = () => {
     if (activeRideId) {
       navigate(`/driver-active-ride/${activeRideId}`);
     } else {
@@ -306,9 +306,9 @@ const DriverDashboardWindow = () => {
 
           <div className="divider"></div>
 
-          <div className="flex justify-center gap-4">
-            <button className="btn btn-primary" onClick={handleActiveDeliveries}>
-              Active Deliveries
+          <div className="flex justify-center">
+            <button className="btn btn-primary" onClick={handleActiveRides}>
+              {activeRideId ? "View Active Ride" : "View Ride Requests"}
             </button>
           </div>
         </div>
