@@ -40,8 +40,9 @@ const restaurantDetailsSchema = new mongoose.Schema(
         },
         cuisine: {
             type: String,
-            required: false,
-            default: "General"
+            enum: ["Fast Food", "Deshi", "General", "Chinese", "Mexican"],
+            default: "General",
+            required: true
         },
         rating: {
             type: Number,

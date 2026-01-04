@@ -29,6 +29,7 @@ const RestaurantDashboardWindow = () => {
   const [reservationFilter, setReservationFilter] = useState("all"); // "all", "pending", "confirmed"
   const [selectedReservation, setSelectedReservation] = useState(null);
   const [showReservationModal, setShowReservationModal] = useState(false);
+  const [updatingReservation, setUpdatingReservation] = useState(false);
   
   // Offer management states
   const [showOfferForm, setShowOfferForm] = useState(false);
@@ -169,6 +170,11 @@ const RestaurantDashboardWindow = () => {
   };
 
   const handleReservationStatusUpdate = async (reservationId, newStatus) => {
+    setUpdatingReservation(true);
+    // Close modal immediately
+    setShowReservationModal(false);
+    setSelectedReservation(null);
+
     try {
       const response = await axios({
         method: 'put',
@@ -182,12 +188,12 @@ const RestaurantDashboardWindow = () => {
 
       // Update local restaurant state
       setRestaurant(response.data.restaurant);
-      setShowReservationModal(false);
-      setSelectedReservation(null);
       toast.success(`Reservation ${newStatus} successfully`);
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to update reservation status");
       console.error(error);
+    } finally {
+      setUpdatingReservation(false);
     }
   };
 
@@ -833,6 +839,7 @@ const RestaurantDashboardWindow = () => {
                   <button
                     onClick={() => handleReservationStatusUpdate(selectedReservation._id, 'confirmed')}
                     className="btn btn-success gap-2"
+                    disabled={updatingReservation}
                   >
                     <Check size={16} />
                     Accept
@@ -840,6 +847,7 @@ const RestaurantDashboardWindow = () => {
                   <button
                     onClick={() => handleReservationStatusUpdate(selectedReservation._id, 'cancelled')}
                     className="btn btn-error gap-2"
+                    disabled={updatingReservation}
                   >
                     <X size={16} />
                     Cancel
@@ -850,6 +858,7 @@ const RestaurantDashboardWindow = () => {
                 <button
                   onClick={() => handleReservationStatusUpdate(selectedReservation._id, 'completed')}
                   className="btn btn-primary gap-2"
+                  disabled={updatingReservation}
                 >
                   <Check size={16} />
                   Complete
