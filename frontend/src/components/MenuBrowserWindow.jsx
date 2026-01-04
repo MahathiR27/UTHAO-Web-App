@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation } from "react-router";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { ShoppingCart, Calendar } from "lucide-react";
+import { ShoppingCart, Calendar, Star, Heart } from "lucide-react";
 import { getUser, getToken } from "../utils/authUtils";
 
 const MenuBrowserWindow = () => {
@@ -17,6 +17,9 @@ const MenuBrowserWindow = () => {
   const [showReservationModal, setShowReservationModal] = useState(false);
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [selectedMenuItem, setSelectedMenuItem] = useState(null);
+  const [restaurantRating, setRestaurantRating] = useState(null);
+  const [reviews, setReviews] = useState([]);
+  const [isFavourite, setIsFavourite] = useState(false);
   const [reservationForm, setReservationForm] = useState({
     name: "",
     numberOfPeople: "",
@@ -38,6 +41,41 @@ const MenuBrowserWindow = () => {
         );
         setRestaurant(response.data.restaurant);
         setMenuItems(response.data.menuItems || []);
+
+        // Fetch restaurant rating
+        try {
+          const ratingResponse = await axios.get(
+            `http://localhost:5001/api/dashboard/restaurant-rating/${restaurantId}`
+          );
+          setRestaurantRating(ratingResponse.data);
+        } catch (error) {
+          // No ratings yet
+          setRestaurantRating({ averageRating: 0, totalReviews: 0 });
+        }
+
+        // Fetch restaurant reviews
+        try {
+          const reviewsResponse = await axios.get(
+            `http://localhost:5001/api/dashboard/restaurant-reviews/${restaurantId}`
+          );
+          setReviews(reviewsResponse.data.reviews || []);
+        } catch (error) {
+          console.error("Failed to load reviews:", error);
+        }
+
+        // Check if restaurant is favourited (only for logged-in users)
+        if (currentUser) {
+          try {
+            const favouritesResponse = await axios.get(
+              'http://localhost:5001/api/dashboard/get-favourites',
+              { headers: { token: getToken() } }
+            );
+            const favouriteIds = favouritesResponse.data.favourites.map(fav => fav._id);
+            setIsFavourite(favouriteIds.includes(restaurantId));
+          } catch (error) {
+            console.error("Failed to load favourites:", error);
+          }
+        }
       } catch (error) {
         toast.error("Failed to load restaurant menu");
         console.error(error);
@@ -54,6 +92,24 @@ const MenuBrowserWindow = () => {
     setShowOrderModal(true);
   };
 
+  // Helper function to render star rating
+  const renderStars = (rating) => {
+    const stars = [];
+    const fullStars = Math.floor(rating);
+    const hasHalfStar = rating % 1 >= 0.5;
+
+    for (let i = 0; i < 5; i++) {
+      if (i < fullStars) {
+        stars.push(<Star key={i} className="w-5 h-5 fill-yellow-400 text-yellow-400" />);
+      } else if (i === fullStars && hasHalfStar) {
+        stars.push(<Star key={i} className="w-5 h-5 fill-yellow-400 text-yellow-400" style={{ clipPath: 'inset(0 50% 0 0)' }} />);
+      } else {
+        stars.push(<Star key={i} className="w-5 h-5 text-gray-300" />);
+      }
+    }
+    return stars;
+  };
+
   // Helper function to get applicable offer for a menu item
   const getMenuItemOffer = (menuIndex) => {
     if (!restaurant?.offers) return null;
@@ -62,6 +118,36 @@ const MenuBrowserWindow = () => {
     return restaurant.offers.find(offer => 
       offer.menuItemIndices && offer.menuItemIndices.includes(menuIndex)
     );
+  };
+
+  // Toggle favourite status
+  const handleToggleFavourite = async () => {
+    if (!currentUser) {
+      toast.error("Please log in to add favourites");
+      return;
+    }
+
+    try {
+      if (isFavourite) {
+        await axios.delete(
+          `http://localhost:5001/api/dashboard/remove-favourite/${restaurantId}`,
+          { headers: { token: getToken() } }
+        );
+        toast.success("Removed from favourites");
+        setIsFavourite(false);
+      } else {
+        await axios.post(
+          `http://localhost:5001/api/dashboard/add-favourite/${restaurantId}`,
+          {},
+          { headers: { token: getToken() } }
+        );
+        toast.success("Added to favourites");
+        setIsFavourite(true);
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to update favourites");
+      console.error(error);
+    }
   };
 
   // Helper function to calculate discounted price
@@ -197,7 +283,39 @@ const MenuBrowserWindow = () => {
         <div className="max-w-7xl mx-auto mb-8">
           <div className="card bg-base-100 shadow-lg">
             <div className="card-body">
-              <h1 className="text-3xl font-bold">{restaurant.RestaurantName}</h1>
+              <div className="flex items-center justify-between">
+                <h1 className="text-3xl font-bold">{restaurant.RestaurantName}</h1>
+                {currentUser && (
+                  <button
+                    onClick={handleToggleFavourite}
+                    className={`btn btn-circle ${isFavourite ? 'btn-error' : 'btn-ghost'}`}
+                  >
+                    <Heart 
+                      className={`w-6 h-6 ${isFavourite ? 'fill-current' : ''}`}
+                    />
+                  </button>
+                )}
+              </div>
+              
+              {/* Rating Section */}
+              {restaurantRating && (
+                <div className="flex items-center gap-3 mt-2 mb-4">
+                  <div className="flex items-center">
+                    {renderStars(restaurantRating.averageRating || 0)}
+                  </div>
+                  <span className="text-lg font-semibold">
+                    {restaurantRating.averageRating 
+                      ? restaurantRating.averageRating.toFixed(1) 
+                      : '0.0'}
+                  </span>
+                  {restaurantRating.totalReviews > 0 && (
+                    <span className="text-sm text-gray-500">
+                      ({restaurantRating.totalReviews} review{restaurantRating.totalReviews !== 1 ? 's' : ''})
+                    </span>
+                  )}
+                </div>
+              )}
+              
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
                 <div>
                   <span className="font-semibold">Owner:</span> {restaurant.OwnerName}
@@ -454,6 +572,59 @@ const MenuBrowserWindow = () => {
         </div>
         );
       })()}
+
+      {/* Reviews Section */}
+      {restaurant && (
+        <div className="max-w-7xl mx-auto mb-8">
+          <div className="card bg-base-100 shadow-lg">
+            <div className="card-body">
+              <h3 className="card-title text-xl mb-4">
+                Customer Reviews 
+                {restaurantRating && restaurantRating.totalReviews > 0 && (
+                  <span className="text-sm font-normal ml-2">
+                    ({restaurantRating.averageRating.toFixed(1)} ⭐ • {restaurantRating.totalReviews} review{restaurantRating.totalReviews !== 1 ? 's' : ''})
+                  </span>
+                )}
+              </h3>
+
+              {reviews.length === 0 ? (
+                <p className="text-center text-gray-500 py-8">No reviews yet</p>
+              ) : (
+                <div className="space-y-4 max-h-96 overflow-y-auto">
+                  {reviews.map((review) => (
+                    <div key={review._id} className="bg-base-200 p-4 rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <div>
+                          <p className="font-semibold">{review.userId?.fullName || 'Anonymous'}</p>
+                          {review.menuItemName && (
+                            <p className="text-xs text-primary font-medium">
+                              For: {review.menuItemName}
+                            </p>
+                          )}
+                          <p className="text-xs text-gray-500">
+                            {new Date(review.createdAt).toLocaleDateString('en-US', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric'
+                            })}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {Array.from({ length: review.rating }).map((_, i) => (
+                            <span key={i}>⭐</span>
+                          ))}
+                          <span className="ml-1 text-sm text-gray-600">({review.rating}/5)</span>
+                        </div>
+                      </div>
+                      <p className="text-sm">{review.reviewText}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

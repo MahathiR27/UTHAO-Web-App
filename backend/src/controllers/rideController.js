@@ -1,7 +1,11 @@
 // Simple fare calculation for rides
 import RideRequest from "../modules/rideRequestSchema.js";
+import DriverRating from "../modules/driverRatingSchema.js";
+import Driver from "../modules/driverReg.js";
+import User from "../modules/userReg.js";
 
 import {sendRideCompletionEmail} from './emailService.js';
+import { createRideRequestNotification, createRideAcceptedNotification, createRideCompletedNotification } from './notificationHelper.js';
 
 // Generate 4-digit OTP for ride verification
 const generateRideOTP = () => {
@@ -143,6 +147,20 @@ export const acceptRideRequest = async (req, res) => {
 
     await ride.save();
 
+    // Populate driver info to send notification
+    const populatedRide = await RideRequest.findById(rideId)
+      .populate('userId', 'fullName')
+      .populate('driverId', 'fullName');
+
+    // Create notification for user about ride acceptance
+    if (populatedRide.driverId && populatedRide.userId) {
+      await createRideAcceptedNotification(
+        populatedRide.userId._id,
+        rideId,
+        populatedRide.driverId.fullName
+      );
+    }
+
     return res.status(200).json({
       message: "Ride accepted successfully",
       ride
@@ -235,6 +253,14 @@ export const updateRideStatus = async (req, res) => {
         Math.round(ride.duration),
         ride.completedAt.toLocaleString()
       );
+
+      // Create notification for driver thanking them
+      if (ride.driverId) {
+        await createRideCompletedNotification(
+          ride.driverId,
+          rideId
+        );
+      }
     }
 
     await ride.save();
@@ -242,6 +268,98 @@ export const updateRideStatus = async (req, res) => {
     return res.status(200).json({
       message: "Ride status updated successfully",
       ride
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+// Submit driver rating after ride completion
+export const submitDriverRating = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { rideId, driverId, rating } = req.body;
+
+    if (!rideId || !driverId || !rating) {
+      return res.status(400).json({ message: "Ride ID, driver ID, and rating are required" });
+    }
+
+    if (rating < 1 || rating > 5) {
+      return res.status(400).json({ message: "Rating must be between 1 and 5" });
+    }
+
+    // Check if ride exists and is completed
+    const ride = await RideRequest.findById(rideId);
+    if (!ride) {
+      return res.status(404).json({ message: "Ride not found" });
+    }
+
+    if (ride.status !== 'completed') {
+      return res.status(400).json({ message: "Can only rate completed rides" });
+    }
+
+    // Check if user already rated this ride
+    const existingRating = await DriverRating.findOne({ rideId });
+    if (existingRating) {
+      return res.status(400).json({ message: "You have already rated this ride" });
+    }
+
+    // Create new rating
+    const newRating = new DriverRating({
+      userId,
+      driverId,
+      rideId,
+      rating
+    });
+
+    await newRating.save();
+
+    return res.status(200).json({
+      message: "Rating submitted successfully",
+      rating: newRating
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Check if user has rated a ride
+export const checkRideRating = async (req, res) => {
+  try {
+    const { rideId } = req.params;
+
+    const rating = await DriverRating.findOne({ rideId }).lean();
+
+    return res.status(200).json({
+      hasRating: !!rating,
+      rating: rating || null
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Get driver rating summary
+export const getDriverRating = async (req, res) => {
+  try {
+    const { driverId } = req.params;
+
+    if (!driverId) {
+      return res.status(400).json({ message: "Driver ID required" });
+    }
+
+    const ratings = await DriverRating.find({ driverId }).lean();
+    
+    const totalRatings = ratings.length;
+    const averageRating = totalRatings > 0
+      ? ratings.reduce((sum, rating) => sum + rating.rating, 0) / totalRatings
+      : 0;
+
+    return res.status(200).json({
+      averageRating: Math.round(averageRating * 10) / 10,
+      totalRatings
     });
   } catch (err) {
     console.error(err);
