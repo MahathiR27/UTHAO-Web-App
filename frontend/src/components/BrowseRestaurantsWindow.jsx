@@ -100,53 +100,58 @@ const BrowseRestaurantsWindow = () => {
   }
 
   return (
-    <div className="card w-full max-w-6xl bg-base-100 shadow-xl border border-base-300">
-      <div className="card-body">
-        {/* Header */}
-        <div className="mb-6">
-          <h2 className="text-3xl font-bold text-center mb-2">Browse Restaurants</h2>
-          <p className="text-center text-gray-500">Discover amazing restaurants near you</p>
-        </div>
-
-        {/* Search and Filter Bar */}
-        <div className="flex flex-col md:flex-row gap-4 mb-6">
-          {/* Search Bar */}
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Search restaurants..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="input input-bordered w-full pl-10"
-            />
+    <div className="w-full">
+      <div className="sticky top-[64px] z-40 bg-base-200 pb-4">
+        <div className="max-w-6xl mx-auto px-4">
+          {/* Header */}
+          <div className="mb-6 pt-4">
+            <h2 className="text-3xl font-bold text-center mb-2">Browse Restaurants</h2>
+            <p className="text-center text-gray-500">Discover amazing restaurants near you</p>
           </div>
 
-          {/* Sort Dropdown */}
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className="select select-bordered"
-          >
-            <option value="name">Sort by Name (A-Z)</option>
-            <option value="rating">Sort by Rating</option>
-          </select>
+          {/* Search and Filter Bar */}
+          <div className="flex flex-col md:flex-row gap-4 bg-base-100 p-4 rounded-lg shadow-lg">
+            {/* Search Bar */}
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="Search restaurants..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="input input-bordered w-full pl-10"
+              />
+            </div>
 
-          {/* Cuisine Filter */}
-          <select
-            value={selectedCuisine}
-            onChange={(e) => setSelectedCuisine(e.target.value)}
-            className="select select-bordered"
-          >
-            <option value="all">All Cuisines</option>
-            {availableCuisines.map((cuisine) => (
-              <option key={cuisine} value={cuisine}>
-                {cuisine}
-              </option>
-            ))}
-          </select>
+            {/* Sort Dropdown */}
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="select select-bordered"
+            >
+              <option value="name">Sort by Name (A-Z)</option>
+              <option value="rating">Sort by Rating</option>
+            </select>
+
+            {/* Cuisine Filter */}
+            <select
+              value={selectedCuisine}
+              onChange={(e) => setSelectedCuisine(e.target.value)}
+              className="select select-bordered"
+            >
+              <option value="all">All Cuisines</option>
+              {availableCuisines.map((cuisine) => (
+                <option key={cuisine} value={cuisine}>
+                  {cuisine}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
+      </div>
 
+      {/* Scrollable Content */}
+      <div className="max-w-6xl mx-auto px-4">
         {/* Results Count */}
         <div className="mb-4">
           <p className="text-sm text-gray-500">
