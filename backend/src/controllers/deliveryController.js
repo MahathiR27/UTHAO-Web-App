@@ -1,6 +1,7 @@
 import Order from "../modules/orderSchema.js";
 import User from "../modules/userReg.js";
 import Restaurant from "../modules/restaurantReg.js";
+import { sendOrderReceipt } from "./emailService.js";
 
 // Get all confirmed food orders available for delivery (for drivers)
 export const getAvailableDeliveries = async (req, res) => {
@@ -155,6 +156,36 @@ export const completeDelivery = async (req, res) => {
     order.deliveredAt = new Date();
 
     await order.save();
+
+    // Send email receipt to the user
+    try {
+      const user = await User.findById(order.userId);
+      const restaurant = await Restaurant.findById(order.restaurantId);
+      
+      if (user && user.email && restaurant) {
+        const menuItemIndex = order.menuItemId.split('-').pop();
+        const menuItem = restaurant.menu ? restaurant.menu[parseInt(menuItemIndex)] : null;
+        
+        const orderDetails = {
+          restaurantName: restaurant.RestaurantName,
+          menuItemName: menuItem ? menuItem.name : 'Food Order',
+          price: order.price,
+          deliveryAddress: order.deliveryAddress,
+          deliveredAt: order.deliveredAt.toLocaleString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          })
+        };
+        
+        await sendOrderReceipt(user.email, user.fullName, orderDetails);
+      }
+    } catch (emailError) {
+      console.error("Failed to send order receipt email:", emailError);
+      // Don't fail the delivery completion if email fails
+    }
 
     return res.status(200).json({
       message: "Delivery completed successfully",
