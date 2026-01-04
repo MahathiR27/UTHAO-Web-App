@@ -32,12 +32,25 @@ const userDetailsSchema = new mongoose.Schema(
             unique: true,
             sparse: true
         },
+        referredBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'userReg',
+            default: null
+        },
+        firstLoginCompleted: {
+            type: Boolean,
+            default: false
+        },
         reservations: {
             type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Reservation' }],
             default: []
         },
         orders: {
             type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],
+            default: []
+        },
+        favouriteRestaurants: {
+            type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'restaurantReg' }],
             default: []
         }
 

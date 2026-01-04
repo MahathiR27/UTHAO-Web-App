@@ -1,10 +1,11 @@
 import express from 'express';
-import { getRestaurant, addMenu, updateRestaurant, updateMenu, addOffer, getOffers, updateOffer, deleteOffer, getAllRestaurants } from '../controllers/restaurantController.js';
-import { getUser, updateUser, generateRefId, getUserCart, cancelOrder, confirmUserOrders, getUserOrderHistory, getUserOngoingActivity } from '../controllers/userController.js';
+import { getRestaurant, addMenu, updateRestaurant, updateMenu, addOffer, getOffers, updateOffer, deleteOffer, getAllRestaurants, getRestaurantReviews, getRestaurantRating } from '../controllers/restaurantController.js';
+import { getUser, updateUser, generateRefId, getUserCart, cancelOrder, confirmUserOrders, getUserOrderHistory, getUserOngoingActivity, submitReview, checkOrderReview, addFavourite, removeFavourite, getFavourites } from '../controllers/userController.js';
 import { getDriver, updateDriver } from '../controllers/driverController.js';
 import { getRestaurantMenuItems, makeReservation, updateReservationStatus, makeOrder } from '../controllers/dashboardController.js';
-import { calculateFare, createRideRequest, getRequestedRides, acceptRideRequest, getRideStatus, cancelRideRequest, updateRideStatus, getDriverActiveRide } from '../controllers/rideController.js';
+import { calculateFare, createRideRequest, getRequestedRides, acceptRideRequest, getRideStatus, cancelRideRequest, updateRideStatus, getDriverActiveRide, submitDriverRating, checkRideRating, getDriverRating } from '../controllers/rideController.js';
 import { getAvailableDeliveries, getDriverActiveDelivery, acceptDelivery, completeDelivery, getDeliveryStatus } from '../controllers/deliveryController.js';
+import { getNotifications, markNotificationAsRead, markAllNotificationsAsRead, getUnreadCount } from '../controllers/notificationController.js';
 import { verifyToken } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -64,5 +65,27 @@ router.get("/get-driver-active-delivery", verifyToken, getDriverActiveDelivery);
 router.post("/accept-delivery", verifyToken, acceptDelivery);
 router.put("/complete-delivery", verifyToken, completeDelivery);
 router.get("/delivery-status/:orderId", verifyToken, getDeliveryStatus);
+
+// Review endpoints
+router.post("/submit-review", verifyToken, submitReview);
+router.get("/check-order-review/:orderId", checkOrderReview);
+router.get("/restaurant-reviews/:restaurantId", getRestaurantReviews);
+router.get("/restaurant-rating/:restaurantId", getRestaurantRating);
+
+// Favourite endpoints
+router.post("/add-favourite/:restaurantId", verifyToken, addFavourite);
+router.delete("/remove-favourite/:restaurantId", verifyToken, removeFavourite);
+router.get("/get-favourites", verifyToken, getFavourites);
+
+// Driver rating endpoints
+router.post("/submit-driver-rating", verifyToken, submitDriverRating);
+router.get("/check-ride-rating/:rideId", checkRideRating);
+router.get("/driver-rating/:driverId", getDriverRating);
+
+// Notification endpoints
+router.get("/notifications", verifyToken, getNotifications);
+router.put("/notifications/:notificationId/read", verifyToken, markNotificationAsRead);
+router.put("/notifications/mark-all-read", verifyToken, markAllNotificationsAsRead);
+router.get("/notifications/unread-count", verifyToken, getUnreadCount);
 
 export default router;

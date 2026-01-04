@@ -14,6 +14,7 @@ const BrowseRestaurantsWindow = () => {
   const [sortBy, setSortBy] = useState("name");
   const [selectedCuisine, setSelectedCuisine] = useState("all");
   const [availableCuisines, setAvailableCuisines] = useState([]);
+  const [restaurantRatings, setRestaurantRatings] = useState({});
 
   // Fetch all restaurants on mount
   useEffect(() => {
@@ -32,11 +33,42 @@ const BrowseRestaurantsWindow = () => {
       // Extract unique cuisines
       const cuisines = [...new Set(data.map(r => r.cuisine || "General"))];
       setAvailableCuisines(cuisines);
+
+      // Fetch ratings for all restaurants
+      await fetchAllRatings(data);
     } catch (error) {
       toast.error("Failed to load restaurants");
       console.error(error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAllRatings = async (restaurantList) => {
+    try {
+      const ratingsData = {};
+      
+      // Fetch ratings for each restaurant
+      await Promise.all(
+        restaurantList.map(async (restaurant) => {
+          try {
+            const ratingResponse = await axios.get(
+              `http://localhost:5001/api/dashboard/restaurant-rating/${restaurant._id}`
+            );
+            ratingsData[restaurant._id] = ratingResponse.data;
+          } catch (error) {
+            // If no ratings exist, default to 0
+            ratingsData[restaurant._id] = {
+              averageRating: 0,
+              totalReviews: 0
+            };
+          }
+        })
+      );
+      
+      setRestaurantRatings(ratingsData);
+    } catch (error) {
+      console.error("Error fetching ratings:", error);
     }
   };
 
@@ -62,7 +94,11 @@ const BrowseRestaurantsWindow = () => {
     if (sortBy === "name") {
       result.sort((a, b) => a.RestaurantName.localeCompare(b.RestaurantName));
     } else if (sortBy === "rating") {
-      result.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+      result.sort((a, b) => {
+        const ratingA = restaurantRatings[a._id]?.averageRating || 0;
+        const ratingB = restaurantRatings[b._id]?.averageRating || 0;
+        return ratingB - ratingA;
+      });
     }
 
     setFilteredRestaurants(result);
@@ -183,11 +219,18 @@ const BrowseRestaurantsWindow = () => {
                   {/* Rating */}
                   <div className="flex items-center gap-2 mb-2">
                     <div className="flex items-center">
-                      {renderStars(restaurant.rating || 0)}
+                      {renderStars(restaurantRatings[restaurant._id]?.averageRating || 0)}
                     </div>
                     <span className="text-sm text-gray-500">
-                      ({restaurant.rating ? restaurant.rating.toFixed(1) : '0.0'})
+                      ({restaurantRatings[restaurant._id]?.averageRating 
+                        ? restaurantRatings[restaurant._id].averageRating.toFixed(1) 
+                        : '0.0'})
                     </span>
+                    {restaurantRatings[restaurant._id]?.totalReviews > 0 && (
+                      <span className="text-xs text-gray-400">
+                        • {restaurantRatings[restaurant._id].totalReviews} review{restaurantRatings[restaurant._id].totalReviews !== 1 ? 's' : ''}
+                      </span>
+                    )}
                   </div>
 
                   {/* Cuisine Badge */}

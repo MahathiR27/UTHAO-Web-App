@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { X } from "lucide-react";
+import { X, Heart, Bell } from "lucide-react";
 import { getUser, getToken } from "../utils/authUtils";
 
 const UserDashboardWindow = () => {
@@ -31,6 +31,18 @@ const UserDashboardWindow = () => {
   const [ongoingRides, setOngoingRides] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyTab, setHistoryTab] = useState('completed');
+  const [showFirstLoginBanner, setShowFirstLoginBanner] = useState(false);
+  const [promoCode, setPromoCode] = useState("");
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [reviewForm, setReviewForm] = useState({ rating: 5, reviewText: "" });
+  const [reviewedOrders, setReviewedOrders] = useState(new Set());
+  const [showFavouritesModal, setShowFavouritesModal] = useState(false);
+  const [favouriteRestaurants, setFavouriteRestaurants] = useState([]);
+  const [favouritesLoading, setFavouritesLoading] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showNotificationsModal, setShowNotificationsModal] = useState(false);
 
   // Fetch user data on mount
   useEffect(() => {
@@ -38,6 +50,11 @@ const UserDashboardWindow = () => {
       toast.error("Please login first");
       navigate("/login");
       return;
+    }
+
+    // Check if this is first login AND user was referred (show banner only once for referred users)
+    if (currentUser.firstLoginCompleted === false && currentUser.referredBy) {
+      setShowFirstLoginBanner(true);
     }
 
     const fetchUser = async () => {
@@ -58,6 +75,14 @@ const UserDashboardWindow = () => {
     };
 
     fetchUser();
+    fetchNotifications();
+    
+    // Poll for new notifications every 30 seconds
+    const notificationInterval = setInterval(() => {
+      fetchNotifications();
+    }, 30000);
+
+    return () => clearInterval(notificationInterval);
   }, [currentUser, navigate]);
 
   // Check if cart should be opened from URL parameter
@@ -166,14 +191,15 @@ const UserDashboardWindow = () => {
       await axios({
         method: 'put',
         url: "http://localhost:5001/api/dashboard/confirm-user-orders",
-        data: {},
+        data: { promoCode: promoCode.trim() },
         headers: { token: getToken() }
       });
       toast.success("All orders confirmed!");
       setShowCartModal(false);
       setCartOrders([]);
+      setPromoCode("");
     } catch (error) {
-      toast.error("Failed to confirm orders");
+      toast.error(error.response?.data?.message || "Failed to confirm orders");
       console.error(error);
     }
   };
@@ -189,6 +215,24 @@ const UserDashboardWindow = () => {
         headers: { token: getToken() }
       });
       setOrderHistory(historyResponse.data.history || []);
+
+      // Check which orders have been reviewed
+      const reviewed = new Set();
+      for (const item of historyResponse.data.history || []) {
+        if (item.type === 'food') {
+          try {
+            const reviewCheckResponse = await axios.get(
+              `http://localhost:5001/api/dashboard/check-order-review/${item._id}`
+            );
+            if (reviewCheckResponse.data.hasReview) {
+              reviewed.add(item._id);
+            }
+          } catch (error) {
+            console.error(`Failed to check review for order ${item._id}`);
+          }
+        }
+      }
+      setReviewedOrders(reviewed);
 
       // Fetch ongoing activity
       const ongoingResponse = await axios({
@@ -225,6 +269,136 @@ const UserDashboardWindow = () => {
     return remaining;
   };
 
+  const handleOpenReviewModal = (order) => {
+    setSelectedOrder(order);
+    setReviewForm({ rating: 5, reviewText: "" });
+    setShowReviewModal(true);
+  };
+
+  const handleReviewFormChange = (e) => {
+    const { name, value } = e.target;
+    setReviewForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmitReview = async (e) => {
+    e.preventDefault();
+
+    if (!reviewForm.reviewText.trim()) {
+      toast.error("Please enter a review");
+      return;
+    }
+
+    try {
+      await axios({
+        method: 'post',
+        url: "http://localhost:5001/api/dashboard/submit-review",
+        data: {
+          orderId: selectedOrder._id,
+          restaurantId: selectedOrder.restaurantId,
+          rating: reviewForm.rating,
+          reviewText: reviewForm.reviewText
+        },
+        headers: { token: getToken() }
+      });
+
+      toast.success("Review submitted successfully!");
+      setShowReviewModal(false);
+      setSelectedOrder(null);
+      setReviewForm({ rating: 5, reviewText: "" });
+
+      // Mark this order as reviewed
+      setReviewedOrders(prev => new Set([...prev, selectedOrder._id]));
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to submit review");
+      console.error(error);
+    }
+  };
+
+  const handleOpenFavourites = async () => {
+    setShowFavouritesModal(true);
+    setFavouritesLoading(true);
+    try {
+      const response = await axios.get(
+        'http://localhost:5001/api/dashboard/get-favourites',
+        { headers: { token: getToken() } }
+      );
+      setFavouriteRestaurants(response.data.favourites || []);
+    } catch (error) {
+      toast.error("Failed to load favourites");
+      console.error(error);
+    } finally {
+      setFavouritesLoading(false);
+    }
+  };
+
+  const handleRemoveFavourite = async (restaurantId) => {
+    try {
+      await axios.delete(
+        `http://localhost:5001/api/dashboard/remove-favourite/${restaurantId}`,
+        { headers: { token: getToken() } }
+      );
+      toast.success("Removed from favourites");
+      setFavouriteRestaurants(prev => prev.filter(r => r._id !== restaurantId));
+    } catch (error) {
+      toast.error("Failed to remove from favourites");
+      console.error(error);
+    }
+  };
+
+  const handleViewRestaurant = (restaurantId) => {
+    navigate(`/menu-browser?id=${restaurantId}`);
+  };
+
+  const fetchNotifications = async () => {
+    try {
+      const response = await axios.get(
+        'http://localhost:5001/api/dashboard/notifications',
+        { headers: { token: getToken() } }
+      );
+      setNotifications(response.data.notifications || []);
+      
+      const countResponse = await axios.get(
+        'http://localhost:5001/api/dashboard/notifications/unread-count',
+        { headers: { token: getToken() } }
+      );
+      setUnreadCount(countResponse.data.unreadCount || 0);
+    } catch (error) {
+      console.error("Failed to load notifications:", error);
+    }
+  };
+
+  const handleOpenNotifications = () => {
+    setShowNotificationsModal(true);
+  };
+
+  const handleMarkAsRead = async (notificationId) => {
+    try {
+      await axios.put(
+        `http://localhost:5001/api/dashboard/notifications/${notificationId}/read`,
+        {},
+        { headers: { token: getToken() } }
+      );
+      fetchNotifications();
+    } catch (error) {
+      console.error("Failed to mark notification as read:", error);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await axios.put(
+        'http://localhost:5001/api/dashboard/notifications/mark-all-read',
+        {},
+        { headers: { token: getToken() } }
+      );
+      fetchNotifications();
+      toast.success("All notifications marked as read");
+    } catch (error) {
+      toast.error("Failed to mark all as read");
+      console.error(error);
+    }
+  };
+
   if (loading) {
     return (
       <div className="card w-full max-w-6xl bg-base-100 shadow-xl border border-base-300">
@@ -251,10 +425,37 @@ const UserDashboardWindow = () => {
   return (
     <div className="card w-full max-w-6xl bg-base-100 shadow-xl border border-base-300">
       <div className="card-body">
+        {/* First Login Banner */}
+        {showFirstLoginBanner && (
+          <div className="alert alert-success shadow-lg mb-4">
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <span className="font-semibold">🎉 You have 3 exclusive promo codes emailed to you!</span>
+              </div>
+              <button 
+                onClick={() => setShowFirstLoginBanner(false)}
+                className="btn btn-ghost btn-sm"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold">User Dashboard</h2>
           <div className="flex gap-2">
+            <button
+              className="btn btn-sm btn-outline indicator"
+              onClick={handleOpenNotifications}
+            >
+              {unreadCount > 0 && (
+                <span className="indicator-item badge badge-error badge-xs">{unreadCount}</span>
+              )}
+              <Bell className="w-4 h-4" />
+            </button>
             <button
               className="btn btn-sm btn-outline"
               onClick={() => setShowRefModal(true)}
@@ -379,8 +580,12 @@ const UserDashboardWindow = () => {
 
           <div className="divider"></div>
 
-          <div className="flex justify-center">
+          <div className="flex justify-center gap-2">
             <button className="btn btn-outline" onClick={handleOpenHistory}>View Order History</button>
+            <button className="btn btn-outline" onClick={handleOpenFavourites}>
+              <Heart className="w-4 h-4" />
+              Favourites
+            </button>
           </div>
         </div>
       </div>
@@ -434,6 +639,27 @@ const UserDashboardWindow = () => {
                                   <p className="font-bold text-primary text-lg">${item.totalAmount}</p>
                                   <p className="text-xs text-gray-500">{formatDate(item.date)}</p>
                                 </div>
+                              </div>
+                              <div className="mt-3">
+                                {reviewedOrders.has(item._id) ? (
+                                  <button
+                                    disabled
+                                    className="btn btn-sm btn-disabled"
+                                  >
+                                    Reviewed ✓
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => handleOpenReviewModal({
+                                      _id: item._id,
+                                      restaurantId: item.restaurantId,
+                                      restaurantName: item.restaurantName
+                                    })}
+                                    className="btn btn-sm btn-outline btn-primary"
+                                  >
+                                    Add Review
+                                  </button>
+                                )}
                               </div>
                             </>
                           ) : (
@@ -622,6 +848,25 @@ const UserDashboardWindow = () => {
 
                 <div className="divider"></div>
 
+                {/* Promo Code Input */}
+                <div className="mb-4">
+                  <label className="label">
+                    <span className="label-text">Promo Code (Optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter your promo code"
+                    value={promoCode}
+                    onChange={(e) => setPromoCode(e.target.value)}
+                    className="input input-bordered w-full focus:outline-none"
+                  />
+                  <label className="label">
+                    <span className="label-text-alt text-gray-500">
+                      Have a promo code? Enter it to get a discount!
+                    </span>
+                  </label>
+                </div>
+
                 <div className="flex justify-between items-center mb-4">
                   <span className="text-lg font-bold">Total:</span>
                   <span className="text-xl font-bold text-primary">
@@ -633,7 +878,10 @@ const UserDashboardWindow = () => {
 
             <div className="modal-action">
               <button
-                onClick={() => setShowCartModal(false)}
+                onClick={() => {
+                  setShowCartModal(false);
+                  setPromoCode("");
+                }}
                 className="btn btn-ghost"
               >
                 Close
@@ -646,6 +894,188 @@ const UserDashboardWindow = () => {
                   Confirm All Orders
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Review Modal */}
+      {showReviewModal && selectedOrder && (
+        <div className="modal modal-open">
+          <div className="modal-box">
+            <h3 className="font-bold text-lg mb-4">Review {selectedOrder.restaurantName}</h3>
+
+            <form onSubmit={handleSubmitReview} className="space-y-4">
+              <div>
+                <label className="label">
+                  <span className="label-text">Rating</span>
+                </label>
+                <div className="flex items-center gap-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setReviewForm({ ...reviewForm, rating: star })}
+                      className="text-3xl"
+                    >
+                      {star <= reviewForm.rating ? '⭐' : '☆'}
+                    </button>
+                  ))}
+                  <span className="ml-2 text-sm text-gray-500">
+                    {reviewForm.rating} star{reviewForm.rating !== 1 ? 's' : ''}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="label">
+                  <span className="label-text">Review</span>
+                </label>
+                <textarea
+                  name="reviewText"
+                  value={reviewForm.reviewText}
+                  onChange={handleReviewFormChange}
+                  placeholder="Share your experience with this restaurant..."
+                  className="textarea textarea-bordered w-full h-32 focus:outline-none"
+                  required
+                />
+              </div>
+
+              <div className="modal-action">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowReviewModal(false);
+                    setSelectedOrder(null);
+                    setReviewForm({ rating: 5, reviewText: "" });
+                  }}
+                  className="btn btn-ghost"
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary">
+                  Submit Review
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Favourites Modal */}
+      {showFavouritesModal && (
+        <div className="modal modal-open">
+          <div className="modal-box w-full max-w-4xl max-h-[90vh]">
+            <h3 className="font-bold text-lg mb-4">My Favourite Restaurants</h3>
+
+            {favouritesLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <span className="loading loading-spinner loading-lg"></span>
+              </div>
+            ) : favouriteRestaurants.length === 0 ? (
+              <div className="text-center py-12">
+                <Heart className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+                <p className="text-xl text-gray-500">No favourite restaurants yet</p>
+                <p className="text-sm text-gray-400 mt-2">Add your favourites to get faster access to your preferred restaurants!</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto max-h-[60vh]">
+                {favouriteRestaurants.map((restaurant) => (
+                  <div key={restaurant._id} className="card bg-base-200 shadow-lg">
+                    <div className="card-body p-4">
+                      <h3 className="card-title text-lg">{restaurant.RestaurantName}</h3>
+                      <p className="text-sm text-gray-600">{restaurant.address}</p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <span className="badge badge-primary badge-sm">
+                          {restaurant.cuisine || "General"}
+                        </span>
+                      </div>
+                      <div className="card-actions justify-end mt-4">
+                        <button
+                          onClick={() => handleRemoveFavourite(restaurant._id)}
+                          className="btn btn-sm btn-error btn-outline"
+                        >
+                          <Heart className="w-4 h-4 fill-current" />
+                          Remove
+                        </button>
+                        <button
+                          onClick={() => handleViewRestaurant(restaurant._id)}
+                          className="btn btn-sm btn-primary"
+                        >
+                          View Menu
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="modal-action">
+              <button className="btn" onClick={() => setShowFavouritesModal(false)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notifications Modal */}
+      {showNotificationsModal && (
+        <div className="modal modal-open">
+          <div className="modal-box w-full max-w-2xl max-h-[90vh]">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-lg">Notifications</h3>
+              {unreadCount > 0 && (
+                <button onClick={handleMarkAllAsRead} className="btn btn-sm btn-ghost">
+                  Mark all as read
+                </button>
+              )}
+            </div>
+
+            {notifications.length === 0 ? (
+              <div className="text-center py-12">
+                <Bell className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+                <p className="text-xl text-gray-500">No notifications</p>
+              </div>
+            ) : (
+              <div className="space-y-2 overflow-y-auto max-h-[60vh]">
+                {notifications.map((notification) => (
+                  <div
+                    key={notification._id}
+                    className={`card ${notification.isRead ? 'bg-base-200' : 'bg-base-300'} shadow-sm`}
+                    onClick={() => !notification.isRead && handleMarkAsRead(notification._id)}
+                  >
+                    <div className="card-body p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <p className={`text-sm ${!notification.isRead ? 'font-semibold' : ''}`}>
+                            {notification.message}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {new Date(notification.createdAt).toLocaleString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              hour: 'numeric',
+                              minute: '2-digit',
+                              hour12: true
+                            })}
+                          </p>
+                        </div>
+                        {!notification.isRead && (
+                          <div className="badge badge-primary badge-xs ml-2">New</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="modal-action">
+              <button className="btn" onClick={() => setShowNotificationsModal(false)}>
+                Close
+              </button>
             </div>
           </div>
         </div>

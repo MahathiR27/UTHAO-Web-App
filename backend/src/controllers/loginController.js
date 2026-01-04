@@ -119,8 +119,16 @@ export const verifyOTP = async (req, res) => {
                 email: user.email,
                 phone: user.phone,
                 address: user.address,
-                userType: "user"
+                userType: "user",
+                firstLoginCompleted: user.firstLoginCompleted,
+                referredBy: user.referredBy
             };
+
+            // Mark first login as completed if this is their first login
+            if (!user.firstLoginCompleted) {
+                user.firstLoginCompleted = true;
+                await user.save();
+            }
         } else if (storedData.userType === "restaurant") {
             userData = {
                 id: user._id,

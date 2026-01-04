@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import axios from "axios";
 import toast from "react-hot-toast";
+import { Star, Bell } from "lucide-react";
 import { getUser, getToken } from "../utils/authUtils";
 
 const DriverDashboardWindow = () => {
@@ -12,6 +13,10 @@ const DriverDashboardWindow = () => {
   const [loading, setLoading] = useState(true);
   const [editingProfile, setEditingProfile] = useState(false);
   const [activeRideId, setActiveRideId] = useState(null);
+  const [driverRating, setDriverRating] = useState(null);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showNotificationsModal, setShowNotificationsModal] = useState(false);
   const [editForm, setEditForm] = useState({
     fullName: "",
     UserName: "",
@@ -39,6 +44,17 @@ const DriverDashboardWindow = () => {
         });
         setDriver(response.data.driver);
         
+        // Fetch driver rating
+        try {
+          const ratingResponse = await axios.get(
+            `http://localhost:5001/api/dashboard/driver-rating/${response.data.driver._id}`
+          );
+          setDriverRating(ratingResponse.data);
+        } catch (ratingError) {
+          console.error("Failed to load driver rating:", ratingError);
+          setDriverRating({ averageRating: 0, totalRatings: 0 });
+        }
+        
         // Check for active ride
         try {
           const activeRideResponse = await axios({
@@ -62,6 +78,14 @@ const DriverDashboardWindow = () => {
     };
 
     fetchDriver();
+    fetchNotifications();
+    
+    // Poll for new notifications every 30 seconds
+    const notificationInterval = setInterval(() => {
+      fetchNotifications();
+    }, 30000);
+
+    return () => clearInterval(notificationInterval);
   }, [currentUser, navigate]);
 
   const handleToggleEditProfile = () => {
@@ -111,6 +135,54 @@ const DriverDashboardWindow = () => {
     }
   };
 
+  const fetchNotifications = async () => {
+    try {
+      const [notificationsRes, unreadCountRes] = await Promise.all([
+        axios.get('http://localhost:5001/api/dashboard/notifications', {
+          headers: { token: getToken() }
+        }),
+        axios.get('http://localhost:5001/api/dashboard/notifications/unread-count', {
+          headers: { token: getToken() }
+        })
+      ]);
+      setNotifications(notificationsRes.data);
+      setUnreadCount(unreadCountRes.data.count);
+    } catch (err) {
+      console.error('Error fetching notifications:', err);
+    }
+  };
+
+  const handleOpenNotifications = () => {
+    setShowNotificationsModal(true);
+  };
+
+  const handleMarkAsRead = async (notificationId) => {
+    try {
+      await axios.put(
+        `http://localhost:5001/api/dashboard/notifications/${notificationId}/read`,
+        {},
+        { headers: { token: getToken() } }
+      );
+      fetchNotifications();
+    } catch (err) {
+      console.error('Error marking notification as read:', err);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await axios.put(
+        'http://localhost:5001/api/dashboard/notifications/mark-all-read',
+        {},
+        { headers: { token: getToken() } }
+      );
+      fetchNotifications();
+    } catch (err) {
+      console.error('Error marking all notifications as read:', err);
+      toast.error('Failed to mark all as read');
+    }
+  };
+
   if (loading) {
     return (
       <div className="card w-full max-w-6xl bg-base-100 shadow-xl border border-base-300">
@@ -140,6 +212,17 @@ const DriverDashboardWindow = () => {
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold">Driver Dashboard</h2>
           <div className="flex gap-2">
+            <button 
+              className="btn btn-sm btn-outline indicator" 
+              onClick={handleOpenNotifications}
+            >
+              {unreadCount > 0 && (
+                <span className="indicator-item badge badge-error badge-xs">
+                  {unreadCount}
+                </span>
+              )}
+              <Bell className="w-4 h-4" />
+            </button>
             <button
               className="btn btn-sm btn-outline"
               onClick={handleToggleEditProfile}
@@ -268,6 +351,34 @@ const DriverDashboardWindow = () => {
             {driver.fullName || driver.UserName}
           </h3>
 
+          {/* Driver Rating Display */}
+          {driverRating && (
+            <div className="bg-base-300 p-4 rounded-lg mb-6">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <div className="flex items-center">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Star
+                      key={star}
+                      className={`w-5 h-5 ${
+                        star <= Math.round(driverRating.averageRating)
+                          ? 'fill-yellow-400 text-yellow-400'
+                          : 'text-gray-300'
+                      }`}
+                    />
+                  ))}
+                </div>
+                <span className="text-lg font-semibold">
+                  {driverRating.averageRating > 0
+                    ? driverRating.averageRating.toFixed(1)
+                    : '0.0'}
+                </span>
+              </div>
+              <p className="text-center text-sm text-gray-500">
+                {driverRating.totalRatings} rating{driverRating.totalRatings !== 1 ? 's' : ''} from riders
+              </p>
+            </div>
+          )}
+
           <div className="space-y-3 mb-6">
             <div className="flex items-start">
               <div className="font-semibold w-32">Username:</div>
@@ -313,6 +424,68 @@ const DriverDashboardWindow = () => {
           </div>
         </div>
       </div>
+
+      {/* Notifications Modal */}
+      {showNotificationsModal && (
+        <div className="modal modal-open">
+          <div className="modal-box max-w-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold">Notifications</h3>
+              <button
+                className="btn btn-sm btn-ghost"
+                onClick={() => setShowNotificationsModal(false)}
+              >
+                ✕
+              </button>
+            </div>
+
+            {unreadCount > 0 && (
+              <div className="flex justify-end mb-2">
+                <button
+                  className="btn btn-xs btn-ghost"
+                  onClick={handleMarkAllAsRead}
+                >
+                  Mark all as read
+                </button>
+              </div>
+            )}
+
+            {notifications.length === 0 ? (
+              <div className="text-center py-8 text-base-content/60">
+                <Bell className="w-16 h-16 mx-auto mb-2 opacity-50" />
+                <p>No notifications</p>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+                {notifications.map((notification) => (
+                  <div
+                    key={notification._id}
+                    className={`p-4 rounded-lg border ${
+                      notification.isRead
+                        ? 'bg-base-200 border-base-300'
+                        : 'bg-base-100 border-primary cursor-pointer'
+                    }`}
+                    onClick={() => !notification.isRead && handleMarkAsRead(notification._id)}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1">
+                        <p className="font-medium">{notification.message}</p>
+                        <p className="text-xs text-base-content/60 mt-1">
+                          {new Date(notification.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                      {!notification.isRead && (
+                        <span className="badge badge-primary badge-sm">New</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="modal-backdrop" onClick={() => setShowNotificationsModal(false)}></div>
+        </div>
+      )}
     </div>
   );
 };

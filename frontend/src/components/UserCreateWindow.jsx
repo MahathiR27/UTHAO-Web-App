@@ -12,6 +12,7 @@ const UserCreateWindow = () => {
     password: "",
     phone: "",
     address: "",
+    referralId: ""
   });
 
   const handleChange = (e) => {
@@ -38,6 +39,7 @@ const UserCreateWindow = () => {
         password: "",
         phone: "",
         address: "",
+        referralId: ""
       });
 
       navigate("/login");
@@ -141,6 +143,25 @@ const UserCreateWindow = () => {
               onChange={handleChange}
               className="input input-bordered w-full focus:outline-none"
             />
+          </div>
+
+          <div>
+            <label className="label">
+              <span className="label-text">Referral ID (Optional)</span>
+            </label>
+            <input
+              type="text"
+              name="referralId"
+              placeholder="Enter referral ID if you have one"
+              value={formData.referralId}
+              onChange={handleChange}
+              className="input input-bordered w-full focus:outline-none"
+            />
+            <label className="label">
+              <span className="label-text-alt text-gray-500">
+                If you were referred, you'll get 3 exclusive promo codes!
+              </span>
+            </label>
           </div>
 
           <button type="submit" className="btn btn-primary w-full">

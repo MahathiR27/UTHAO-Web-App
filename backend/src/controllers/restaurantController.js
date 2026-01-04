@@ -1,4 +1,6 @@
 import Restaurant from "../modules/restaurantReg.js";
+import Review from "../modules/reviewSchema.js";
+import User from "../modules/userReg.js";
 
 export const  createRestaurant = async (req, res) => {
     try {
@@ -279,3 +281,82 @@ export const getAllRestaurants = async (req, res) => {
     }
 };
 
+// ----------------------------------------- Restaurant Reviews -----------------------------------------
+
+// Get all reviews for a restaurant
+export const getRestaurantReviews = async (req, res) => {
+    try {
+        const { restaurantId } = req.params;
+
+        if (!restaurantId) {
+            return res.status(400).json({ message: "Restaurant ID required" });
+        }
+
+        // Get all reviews for this restaurant with user details
+        const reviews = await Review.find({ restaurantId })
+            .populate('userId', 'fullName UserName')
+            .populate('orderId', 'menuItemId')
+            .sort({ createdAt: -1 })
+            .lean();
+
+        // Get restaurant to fetch menu items
+        const restaurant = await Restaurant.findById(restaurantId);
+
+        // Add menu item name to each review
+        const reviewsWithMenuItems = reviews.map(review => {
+            let menuItemName = 'Unknown Item';
+            if (review.orderId?.menuItemId && restaurant?.menu) {
+                const menuItemIndex = review.orderId.menuItemId.split('-').pop();
+                const menuItem = restaurant.menu[parseInt(menuItemIndex)];
+                if (menuItem) {
+                    menuItemName = menuItem.name;
+                }
+            }
+            return {
+                ...review,
+                menuItemName
+            };
+        });
+
+        // Calculate average rating and total reviews
+        const totalReviews = reviewsWithMenuItems.length;
+        const averageRating = totalReviews > 0
+            ? reviewsWithMenuItems.reduce((sum, review) => sum + review.rating, 0) / totalReviews
+            : 0;
+
+        return res.status(200).json({
+            reviews: reviewsWithMenuItems,
+            averageRating: Math.round(averageRating * 10) / 10,
+            totalReviews
+        });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: "Server error" });
+    }
+};
+
+// Get restaurant rating summary
+export const getRestaurantRating = async (req, res) => {
+    try {
+        const { restaurantId } = req.params;
+
+        if (!restaurantId) {
+            return res.status(400).json({ message: "Restaurant ID required" });
+        }
+
+        const reviews = await Review.find({ restaurantId }).lean();
+        
+        const totalReviews = reviews.length;
+        const averageRating = totalReviews > 0
+            ? reviews.reduce((sum, review) => sum + review.rating, 0) / totalReviews
+            : 0;
+
+        return res.status(200).json({
+            averageRating: Math.round(averageRating * 10) / 10,
+            totalReviews
+        });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: "Server error" });
+    }
+};

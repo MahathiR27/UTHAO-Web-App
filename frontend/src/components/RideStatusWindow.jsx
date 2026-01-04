@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router";
-import { MapPin, Navigation, Clock, Route, Car, X, Shield, User, Phone, CheckCircle, Banknote } from "lucide-react";
+import { MapPin, Navigation, Clock, Route, Car, X, Shield, User, Phone, CheckCircle, Banknote, Star } from "lucide-react";
 import toast from "react-hot-toast";
 import axios from "axios";
 
@@ -9,6 +9,9 @@ const RideStatusWindow = () => {
   const { rideId } = useParams();
   const [ride, setRide] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [selectedRating, setSelectedRating] = useState(0);
+  const [submittingRating, setSubmittingRating] = useState(false);
 
   const fetchRideStatus = async () => {
     try {
@@ -18,6 +21,16 @@ const RideStatusWindow = () => {
         { headers: { token: token } }
       );
       setRide(response.data);
+
+      // Show rating modal if ride is completed and not yet rated
+      if (response.data.status === 'completed') {
+        const ratingCheck = await axios.get(
+          `http://localhost:5001/api/dashboard/check-ride-rating/${rideId}`
+        );
+        if (!ratingCheck.data.hasRating) {
+          setShowRatingModal(true);
+        }
+      }
     } catch (error) {
       console.error("Error fetching ride status:", error);
     } finally {
@@ -43,6 +56,34 @@ const RideStatusWindow = () => {
       navigate("/ride-request");
     } catch (error) {
       toast.error("Failed to cancel ride");
+    }
+  };
+
+  const handleSubmitRating = async () => {
+    if (selectedRating === 0) {
+      toast.error("Please select a rating");
+      return;
+    }
+
+    setSubmittingRating(true);
+    try {
+      const token = localStorage.getItem("token");
+      await axios.post(
+        'http://localhost:5001/api/dashboard/submit-driver-rating',
+        {
+          rideId: ride._id,
+          driverId: ride.driverId._id,
+          rating: selectedRating
+        },
+        { headers: { token: token } }
+      );
+      toast.success("Thank you for rating the driver!");
+      setShowRatingModal(false);
+      navigate("/user-dashboard");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to submit rating");
+    } finally {
+      setSubmittingRating(false);
     }
   };
 
@@ -232,6 +273,65 @@ const RideStatusWindow = () => {
           </button>
         )}
       </div>
+
+      {/* Rating Modal - Mandatory after ride completion */}
+      {showRatingModal && (
+        <div className="modal modal-open">
+          <div className="modal-box">
+            <h3 className="font-bold text-lg mb-4">Rate Your Driver</h3>
+            
+            <p className="mb-4 text-center text-gray-600">
+              How was your ride with {ride.driverId?.fullName}?
+            </p>
+
+            {/* Star Rating */}
+            <div className="flex justify-center gap-2 mb-6">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  onClick={() => setSelectedRating(star)}
+                  className="btn btn-ghost btn-lg p-2"
+                >
+                  <Star
+                    className={`w-10 h-10 ${
+                      star <= selectedRating
+                        ? 'fill-yellow-400 text-yellow-400'
+                        : 'text-gray-300'
+                    }`}
+                  />
+                </button>
+              ))}
+            </div>
+
+            {selectedRating > 0 && (
+              <p className="text-center text-sm text-gray-500 mb-4">
+                {selectedRating === 1 && "Poor"}
+                {selectedRating === 2 && "Fair"}
+                {selectedRating === 3 && "Good"}
+                {selectedRating === 4 && "Very Good"}
+                {selectedRating === 5 && "Excellent"}
+              </p>
+            )}
+
+            <div className="modal-action">
+              <button
+                onClick={handleSubmitRating}
+                disabled={submittingRating || selectedRating === 0}
+                className="btn btn-primary w-full"
+              >
+                {submittingRating ? (
+                  <>
+                    <span className="loading loading-spinner"></span>
+                    Submitting...
+                  </>
+                ) : (
+                  "Submit Rating"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

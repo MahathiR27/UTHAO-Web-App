@@ -35,6 +35,11 @@ const RestaurantDashboardWindow = () => {
   const [offerForm, setOfferForm] = useState({ title: "", percentage: "", menuItemIndices: [] });
   const [editingOfferIndex, setEditingOfferIndex] = useState(null);
   const [editOfferForm, setEditOfferForm] = useState({ title: "", percentage: "", menuItemIndices: [] });
+  
+  // Reviews states
+  const [reviews, setReviews] = useState([]);
+  const [averageRating, setAverageRating] = useState(0);
+  const [totalReviews, setTotalReviews] = useState(0);
 
   // Fetch restaurant data on mount
   useEffect(() => {
@@ -52,6 +57,18 @@ const RestaurantDashboardWindow = () => {
           headers: { token: getToken() }
         });
         setRestaurant(response.data.restaurant);
+        
+        // Fetch restaurant reviews
+        try {
+          const reviewsResponse = await axios.get(
+            `http://localhost:5001/api/dashboard/restaurant-reviews/${response.data.restaurant._id}`
+          );
+          setReviews(reviewsResponse.data.reviews || []);
+          setAverageRating(reviewsResponse.data.averageRating || 0);
+          setTotalReviews(reviewsResponse.data.totalReviews || 0);
+        } catch (reviewError) {
+          console.error("Failed to load reviews:", reviewError);
+        }
       } catch (error) {
         toast.error("Failed to load restaurant details");
         console.error(error);
@@ -860,6 +877,57 @@ const RestaurantDashboardWindow = () => {
               </button>
             </div>
           </div>
+        </div>
+      </div>
+    )}
+
+    {/* Reviews Section */}
+    {restaurant && (
+      <div className="card bg-base-100 shadow-xl border border-base-300 mt-6">
+        <div className="card-body">
+          <h3 className="card-title text-xl mb-4">
+            Customer Reviews 
+            {totalReviews > 0 && (
+              <span className="text-sm font-normal ml-2">
+                ({averageRating.toFixed(1)} ⭐ • {totalReviews} review{totalReviews !== 1 ? 's' : ''})
+              </span>
+            )}
+          </h3>
+
+          {reviews.length === 0 ? (
+            <p className="text-center text-gray-500 py-8">No reviews yet</p>
+          ) : (
+            <div className="space-y-4 max-h-96 overflow-y-auto">
+              {reviews.map((review) => (
+                <div key={review._id} className="bg-base-200 p-4 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <p className="font-semibold">{review.userId?.fullName || 'Anonymous'}</p>
+                      {review.menuItemName && (
+                        <p className="text-xs text-primary font-medium">
+                          For: {review.menuItemName}
+                        </p>
+                      )}
+                      <p className="text-xs text-gray-500">
+                        {new Date(review.createdAt).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        })}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: review.rating }).map((_, i) => (
+                        <span key={i}>⭐</span>
+                      ))}
+                      <span className="ml-1 text-sm text-gray-600">({review.rating}/5)</span>
+                    </div>
+                  </div>
+                  <p className="text-sm">{review.reviewText}</p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     )}
