@@ -117,8 +117,24 @@ export const sendOrderReceipt = async (email, name, orderDetails) => {
   await sendEmail(email, subject, body);
 }
 
-export const sendReservationConfirmation = async (email, name, reservationDetails) => {
+export const sendReservationConfirmation = async (email, name, reservationDetails, restaurantName) => {
   const subject = "Your Reservation Confirmation - UTHAO";
-  const body = ``;
+  const body = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #0a0a0a;">
+      <div style="background: linear-gradient(135deg, #1a1a1a 0%, #0d4d2d 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center; border-bottom: 3px solid #22c55e;">
+        <h1 style="color: #22c55e; margin: 0; font-size: 28px; text-shadow: 0 0 10px rgba(34, 197, 94, 0.5);">UTHAO</h1>
+      </div>
+      <div style="background-color: #1a1a1a; padding: 40px; border-radius: 0 0 10px 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); color: #d1d5db;">
+        <h2 style="color: #22c55e; margin-top: 0;">Reservation Confirmed!</h2>
+        <p style="font-size: 16px; line-height: 1.5; margin-bottom: 24px;">Hi ${name}, your reservation at ${restaurantName} has been confirmed.</p>
+        <div style="background: linear-gradient(135deg, #064e3b 0%, #065f46 100%); border: 2px solid #22c55e; border-radius: 8px; padding: 20px; margin: 20px 0; box-shadow: 0 0 20px rgba(34, 197, 94, 0.2);">
+          <p><strong>Date:</strong> ${new Date(reservationDetails.date).toLocaleDateString()}</p>
+          <p><strong>Number of People:</strong> ${reservationDetails.numberOfPeople}</p>
+          <p><strong>Status:</strong> Confirmed</p>
+        </div>
+        <p style="font-size: 14px; color: #9ca3af;">If you need to make changes, please contact the restaurant directly.</p>
+      </div>
+    </div>
+  `;
   await sendEmail(email, subject, body);
-}
+};

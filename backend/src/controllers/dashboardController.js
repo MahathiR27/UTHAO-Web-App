@@ -2,6 +2,7 @@ import Restaurant from "../modules/restaurantReg.js";
 import User from "../modules/userReg.js";
 import Order from "../modules/orderSchema.js";
 import Reservation from "../modules/reservationSchema.js";
+import { sendReservationConfirmation } from "./emailService.js";
 
 // Get menu items for a specific restaurant
 export const getRestaurantMenuItems = async (req, res) => {
@@ -144,6 +145,14 @@ export const updateReservationStatus = async (req, res) => {
       restaurant.currentReservations -= reservation.numberOfPeople;
     }
     await restaurant.save();
+
+    // Send confirmation email if status changed to confirmed
+    if (status === 'confirmed' && oldStatus !== 'confirmed') {
+      const user = await User.findById(reservation.userId);
+      if (user) {
+        await sendReservationConfirmation(user.email, reservation.name, reservation, restaurant.RestaurantName);
+      }
+    }
 
     return res.status(200).json({
       message: "Reservation status updated successfully",
