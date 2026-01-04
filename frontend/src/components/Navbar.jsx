@@ -24,7 +24,7 @@ const Navbar = () => {
 
       return () => clearInterval(notificationInterval);
     }
-  }, []);
+  }, [currentUser]);
 
   const fetchNotifications = async () => {
     try {
