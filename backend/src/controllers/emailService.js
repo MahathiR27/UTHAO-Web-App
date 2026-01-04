@@ -110,3 +110,15 @@ export const sendRideCompletionEmail = async (email, name, price, from, to, dist
   `;
   await sendEmail(email, subject, body);
 };
+
+export const sendOrderReceipt = async (email, name, orderDetails) => {
+  const subject = "Your Order Receipt - UTHAO";
+  const body = ``;
+  await sendEmail(email, subject, body);
+}
+
+export const sendReservationConfirmation = async (email, name, reservationDetails) => {
+  const subject = "Your Reservation Confirmation - UTHAO";
+  const body = ``;
+  await sendEmail(email, subject, body);
+}
