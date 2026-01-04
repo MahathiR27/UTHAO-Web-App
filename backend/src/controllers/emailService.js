@@ -1,7 +1,7 @@
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 
-let SEND_EMAILS = false;
+let SEND_EMAILS = true;
 
 dotenv.config();
 
@@ -112,8 +112,44 @@ export const sendRideCompletionEmail = async (email, name, price, from, to, dist
 };
 
 export const sendOrderReceipt = async (email, name, orderDetails) => {
-  const subject = "Your Order Receipt - UTHAO";
-  const body = ``;
+  const { restaurantName, menuItemName, price, deliveryAddress, deliveredAt } = orderDetails;
+  const subject = "Your Food Order Delivered - UTHAO";
+  const body = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #0a0a0a;">
+      <div style="background: linear-gradient(135deg, #1a1a1a 0%, #0d4d2d 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center; border-bottom: 3px solid #22c55e;">
+        <h1 style="color: #22c55e; margin: 0; font-size: 28px; text-shadow: 0 0 10px rgba(34, 197, 94, 0.5);">UTHAO</h1>
+      </div>
+      <div style="background-color: #1a1a1a; padding: 40px; border-radius: 0 0 10px 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); color: #d1d5db;">
+        <h2 style="color: #22c55e; margin-top: 0;">Thank you, ${name}!</h2>
+        <p style="font-size: 16px; line-height: 1.5; margin-bottom: 24px;">Your food order has been delivered successfully. Here is your receipt:</p>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px; color: #d1d5db;">
+          <tr>
+            <td style="padding: 8px 0; color: #22c55e;">Restaurant:</td>
+            <td style="padding: 8px 0;">${restaurantName}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #22c55e;">Order Item:</td>
+            <td style="padding: 8px 0;">${menuItemName}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #22c55e;">Delivery Address:</td>
+            <td style="padding: 8px 0;">${deliveryAddress}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #22c55e;">Total Amount:</td>
+            <td style="padding: 8px 0; font-weight: bold; color: #22c55e;">৳${price}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #22c55e;">Delivered At:</td>
+            <td style="padding: 8px 0;">${deliveredAt}</td>
+          </tr>
+        </table>
+        <p style="margin-top: 32px; color: #22c55e; font-size: 0.95rem; text-align: center;">
+          Thank you for choosing UTHAO!
+        </p>
+      </div>
+    </div>
+  `;
   await sendEmail(email, subject, body);
 }
 
