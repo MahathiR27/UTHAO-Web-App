@@ -2,6 +2,7 @@ import Restaurant from "../modules/restaurantReg.js";
 import User from "../modules/userReg.js";
 import Order from "../modules/orderSchema.js";
 import Reservation from "../modules/reservationSchema.js";
+import PromoCode from "../modules/promoCodeSchema.js";
 import { sendReservationConfirmation } from "./emailService.js";
 
 // Get menu items for a specific restaurant
@@ -169,7 +170,7 @@ export const makeOrder = async (req, res) => {
   try {
     // Get user ID from JWT token
     const userId = req.user.id;
-    const { restaurantId, menuItemId, price, deliveryAddress, date } = req.body;
+    const { restaurantId, menuItemId, price, deliveryAddress, date, promoCode } = req.body;
 
     if (!restaurantId || !menuItemId || !price || !deliveryAddress) {
       return res.status(400).json({ message: "All order fields are required" });
@@ -187,13 +188,51 @@ export const makeOrder = async (req, res) => {
       return res.status(404).json({ message: "Restaurant not found" });
     }
 
+    let finalPrice = price;
+    let originalPrice = null;
+    let discountPercentage = 0;
+    let promoCodeUsed = null;
+
+    // Validate and apply promo code if provided
+    if (promoCode && promoCode.trim() !== "") {
+      const trimmedCode = promoCode.trim();
+      
+      const promo = await PromoCode.findOne({ 
+        code: { $regex: new RegExp(`^${trimmedCode}$`, 'i') },
+        userId: userId
+      });
+
+      if (!promo) {
+        console.log(`Promo code validation failed for user ${userId}, code: ${trimmedCode}`);
+        return res.status(400).json({ message: "Invalid promo code or code does not belong to you" });
+      }
+
+      if (promo.isUsed) {
+        return res.status(400).json({ message: "Promo code already used" });
+      }
+
+      // Apply discount
+      originalPrice = price;
+      discountPercentage = promo.discountPercentage;
+      finalPrice = price * (1 - discountPercentage / 100);
+      promoCodeUsed = promo.code;
+
+      // Mark promo code as used
+      promo.isUsed = true;
+      promo.usedAt = new Date();
+      await promo.save();
+    }
+
     // Create the order document
     const newOrder = new Order({
       userId,
       restaurantId,
       menuItemId,
       date: date ? new Date(date) : new Date(),
-      price,
+      price: finalPrice,
+      originalPrice: originalPrice,
+      promoCode: promoCodeUsed,
+      discountPercentage: discountPercentage,
       deliveryAddress,
       status: 'pending'
     });

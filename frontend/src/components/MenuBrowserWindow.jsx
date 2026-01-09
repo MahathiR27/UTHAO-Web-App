@@ -20,6 +20,9 @@ const MenuBrowserWindow = () => {
   const [restaurantRating, setRestaurantRating] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [isFavourite, setIsFavourite] = useState(false);
+  const [promoCodes, setPromoCodes] = useState([]);
+  const [selectedPromoCode, setSelectedPromoCode] = useState("");
+  const [promoCodeError, setPromoCodeError] = useState("");
   const [reservationForm, setReservationForm] = useState({
     name: "",
     numberOfPeople: "",
@@ -75,6 +78,17 @@ const MenuBrowserWindow = () => {
           } catch (error) {
             console.error("Failed to load favourites:", error);
           }
+
+          // Fetch user promo codes
+          try {
+            const promoResponse = await axios.get(
+              'http://localhost:5001/api/dashboard/get-user-promo-codes',
+              { headers: { token: getToken() } }
+            );
+            setPromoCodes(promoResponse.data.promoCodes || []);
+          } catch (error) {
+            console.error("Failed to load promo codes:", error);
+          }
         }
       } catch (error) {
         toast.error("Failed to load restaurant menu");
@@ -89,6 +103,8 @@ const MenuBrowserWindow = () => {
 
   const handleOrder = (menuItem) => {
     setSelectedMenuItem(menuItem);
+    setSelectedPromoCode("");
+    setPromoCodeError("");
     setShowOrderModal(true);
   };
 
@@ -227,11 +243,18 @@ const MenuBrowserWindow = () => {
     } 
 
     try {
+      // Calculate the price considering restaurant offers
+      const menuIndex = menuItems.findIndex(item => item._id === selectedMenuItem._id);
+      const offer = getMenuItemOffer(menuIndex);
+      const basePrice = selectedMenuItem.price || 0;
+      const priceAfterOffer = offer ? getDiscountedPrice(basePrice, offer.percentage) : basePrice;
+
       const orderData = {
         restaurantId: restaurantId,
         menuItemId: selectedMenuItem._id || selectedMenuItem.id,
-        price: selectedMenuItem.price || 0,
-        deliveryAddress: currentUser.address
+        price: priceAfterOffer,
+        deliveryAddress: currentUser.address,
+        promoCode: selectedPromoCode
       };
 
       const response = await axios({
@@ -245,6 +268,21 @@ const MenuBrowserWindow = () => {
       setShowOrderModal(false);
       setOrderForm({});
       setSelectedMenuItem(null);
+      setSelectedPromoCode("");
+      setPromoCodeError("");
+
+      // Refresh promo codes after successful order
+      if (selectedPromoCode) {
+        try {
+          const promoResponse = await axios.get(
+            'http://localhost:5001/api/dashboard/get-user-promo-codes',
+            { headers: { token: getToken() } }
+          );
+          setPromoCodes(promoResponse.data.promoCodes || []);
+        } catch (error) {
+          console.error("Failed to refresh promo codes:", error);
+        }
+      }
     } catch (error) {
       console.error("Order error:", error);
       toast.error(error.response?.data?.message || "Failed to place order");
@@ -255,6 +293,8 @@ const MenuBrowserWindow = () => {
     setShowOrderModal(false);
     setOrderForm({});
     setSelectedMenuItem(null);
+    setSelectedPromoCode("");
+    setPromoCodeError("");
   };
 
   if (loading) {
@@ -518,9 +558,16 @@ const MenuBrowserWindow = () => {
       {showOrderModal && selectedMenuItem && (() => {
         const menuIndex = menuItems.findIndex(item => item._id === selectedMenuItem._id);
         const offer = getMenuItemOffer(menuIndex);
-        const originalPrice = selectedMenuItem.price || 0;
-        const discountedPrice = offer ? getDiscountedPrice(originalPrice, offer.percentage) : null;
-        const finalPrice = discountedPrice !== null ? discountedPrice : originalPrice;
+        const basePrice = selectedMenuItem.price || 0;
+        const offerDiscountedPrice = offer ? getDiscountedPrice(basePrice, offer.percentage) : null;
+        const priceBeforePromo = offerDiscountedPrice !== null ? offerDiscountedPrice : basePrice;
+        
+        // Calculate promo discount
+        const selectedPromo = promoCodes.find(p => p.code === selectedPromoCode);
+        const promoDiscountPercentage = selectedPromo ? selectedPromo.discountPercentage : 0;
+        const finalPrice = selectedPromoCode && selectedPromo 
+          ? priceBeforePromo * (1 - promoDiscountPercentage / 100)
+          : priceBeforePromo;
 
         return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -536,18 +583,73 @@ const MenuBrowserWindow = () => {
                     {offer.percentage}% OFF
                   </div>
                 )}
-                {discountedPrice !== null ? (
+                {offerDiscountedPrice !== null ? (
                   <div className="mt-2">
                     <span className="text-sm text-gray-500 line-through mr-2">
-                      ${originalPrice.toFixed(2)}
+                      ${basePrice.toFixed(2)}
                     </span>
                     <span className="text-2xl font-bold text-secondary">
-                      ${discountedPrice.toFixed(2)}
+                      ${offerDiscountedPrice.toFixed(2)}
                     </span>
                   </div>
                 ) : (
                   <p className="text-lg font-bold text-primary mt-2">
-                    ${originalPrice.toFixed(2)}
+                    ${basePrice.toFixed(2)}
+                  </p>
+                )}
+              </div>
+
+              {/* Promo Code Section */}
+              {promoCodes.length > 0 && (
+                <div className="mb-4">
+                  <label className="label">
+                    <span className="label-text font-semibold">Apply Promo Code</span>
+                  </label>
+                  <select
+                    value={selectedPromoCode}
+                    onChange={(e) => {
+                      setSelectedPromoCode(e.target.value);
+                      setPromoCodeError("");
+                    }}
+                    className="select select-bordered w-full"
+                  >
+                    <option value="">No promo code</option>
+                    {promoCodes.map((promo) => (
+                      <option key={promo._id} value={promo.code}>
+                        {promo.code} ({promo.discountPercentage}% OFF)
+                      </option>
+                    ))}
+                  </select>
+                  {promoCodeError && (
+                    <p className="text-error text-sm mt-1">{promoCodeError}</p>
+                  )}
+                </div>
+              )}
+
+              {/* Price Summary */}
+              <div className="mb-4 p-3 bg-base-200 rounded-lg">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm">Price:</span>
+                  <span className="text-sm font-semibold">${priceBeforePromo.toFixed(2)}</span>
+                </div>
+                {selectedPromoCode && selectedPromo && (
+                  <>
+                    <div className="flex justify-between items-center mb-2 text-success">
+                      <span className="text-sm">Promo Discount ({promoDiscountPercentage}%):</span>
+                      <span className="text-sm font-semibold">-${(priceBeforePromo - finalPrice).toFixed(2)}</span>
+                    </div>
+                    <div className="divider my-2"></div>
+                  </>
+                )}
+                <div className="flex justify-between items-center">
+                  <span className="font-bold">Total:</span>
+                  <span className={`font-bold text-lg ${selectedPromoCode && selectedPromo ? 'text-success' : 'text-primary'}`}>
+                    ${finalPrice.toFixed(2)}
+                  </span>
+                </div>
+                {selectedPromoCode && selectedPromo && (
+                  <p className="text-xs text-success mt-2 text-center">
+                    🎉 You save ${(priceBeforePromo - finalPrice).toFixed(2)}!
                   </p>
                 )}
               </div>

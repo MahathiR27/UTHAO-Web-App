@@ -1,13 +1,81 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
-import { User, LogOut, Car, UtensilsCrossed, ClipboardList, Truck, ShoppingCart } from "lucide-react";
+import { User, LogOut, Car, UtensilsCrossed, ClipboardList, Truck, ShoppingCart, Bell, X } from "lucide-react";
 import toast from "react-hot-toast";
-import { getUser, removeToken } from "../utils/authUtils";
+import axios from "axios";
+import { getUser, removeToken, getToken } from "../utils/authUtils";
 
 const Navbar = () => {
   const navigate = useNavigate();
   const currentUser = getUser();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showNotificationsModal, setShowNotificationsModal] = useState(false);
+
+  useEffect(() => {
+    if (currentUser) {
+      fetchNotifications();
+      
+      // Poll for new notifications every 30 seconds
+      const notificationInterval = setInterval(() => {
+        fetchNotifications();
+      }, 30000);
+
+      return () => clearInterval(notificationInterval);
+    }
+  }, [currentUser]);
+
+  const fetchNotifications = async () => {
+    try {
+      const [notificationsRes, unreadCountRes] = await Promise.all([
+        axios.get('http://localhost:5001/api/dashboard/notifications', {
+          headers: { token: getToken() }
+        }),
+        axios.get('http://localhost:5001/api/dashboard/notifications/unread-count', {
+          headers: { token: getToken() }
+        })
+      ]);
+      setNotifications(notificationsRes.data.notifications || []);
+      setUnreadCount(unreadCountRes.data.unreadCount || 0);
+    } catch (err) {
+      console.error('Error fetching notifications:', err);
+      setNotifications([]);
+      setUnreadCount(0);
+    }
+  };
+
+  const handleOpenNotifications = () => {
+    setShowNotificationsModal(true);
+  };
+
+  const handleMarkAsRead = async (notificationId) => {
+    try {
+      await axios.put(
+        `http://localhost:5001/api/dashboard/notifications/${notificationId}/read`,
+        {},
+        { headers: { token: getToken() } }
+      );
+      fetchNotifications();
+    } catch (err) {
+      console.error('Error marking notification as read:', err);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await axios.put(
+        'http://localhost:5001/api/dashboard/notifications/mark-all-read',
+        {},
+        { headers: { token: getToken() } }
+      );
+      fetchNotifications();
+      toast.success("All notifications marked as read");
+    } catch (err) {
+      console.error('Error marking all notifications as read:', err);
+      toast.error('Failed to mark all as read');
+    }
+  };
 
   const handleLogout = () => {
     removeToken();
@@ -23,6 +91,7 @@ const Navbar = () => {
   };
 
   return (
+    <>
     <nav className="navbar bg-base-100 shadow-lg px-4 md:px-8 sticky top-0 z-50">
       {/* Left - Logo */}
       <div className="flex-1">
@@ -81,8 +150,27 @@ const Navbar = () => {
         </div>
       )}
 
-      {/* Right - Profile Dropdown */}
-      <div className="dropdown dropdown-end">
+      {/* Right - Notification Bell and Profile Dropdown */}
+      <div className="flex items-center gap-2">
+        {/* Notification Bell - Only show for logged in users and drivers */}
+        {currentUser && (currentUser.userType === "user" || currentUser.userType === "driver") && (
+          <div className="indicator">
+            {unreadCount > 0 && (
+              <span className="indicator-item badge badge-error badge-sm">
+                {unreadCount}
+              </span>
+            )}
+            <button 
+              className="btn btn-ghost btn-circle hover:bg-primary/10" 
+              onClick={handleOpenNotifications}
+            >
+              <Bell size={22} />
+            </button>
+          </div>
+        )}
+
+        {/* Profile Dropdown */}
+        <div className="dropdown dropdown-end">
         <button
           tabIndex={0}
           onClick={() => setDropdownOpen(!dropdownOpen)}
@@ -111,7 +199,74 @@ const Navbar = () => {
           </ul>
         )}
       </div>
+      </div>
     </nav>
+
+    {/* Notifications Modal */}
+    {showNotificationsModal && (
+      <div className="modal modal-open" style={{ zIndex: 9999 }}>
+        <div className="modal-box max-w-2xl">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="font-bold text-lg">Notifications</h3>
+            <div className="flex gap-2">
+              {notifications.length > 0 && (
+                <button 
+                  className="btn btn-sm btn-outline"
+                  onClick={handleMarkAllAsRead}
+                >
+                  Mark All Read
+                </button>
+              )}
+              <button 
+                className="btn btn-sm btn-circle btn-ghost"
+                onClick={() => setShowNotificationsModal(false)}
+              >
+                <X size={20} />
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {notifications.length === 0 ? (
+              <div className="text-center py-8 text-base-content/50">
+                <Bell className="w-16 h-16 mx-auto mb-2 opacity-50" />
+                <p>No notifications yet</p>
+              </div>
+            ) : (
+              notifications.map((notification) => (
+                <div
+                  key={notification._id}
+                  className={`p-4 rounded-lg border ${
+                    notification.isRead 
+                      ? 'bg-base-200 border-base-300' 
+                      : 'bg-primary/10 border-primary/30'
+                  }`}
+                >
+                  <div className="flex justify-between items-start gap-2">
+                    <div className="flex-1">
+                      <p className="font-medium">{notification.message}</p>
+                      <p className="text-xs text-base-content/60 mt-1">
+                        {new Date(notification.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+                    {!notification.isRead && (
+                      <button
+                        className="btn btn-xs btn-ghost"
+                        onClick={() => handleMarkAsRead(notification._id)}
+                      >
+                        Mark Read
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+        <div className="modal-backdrop" onClick={() => setShowNotificationsModal(false)}></div>
+      </div>
+    )}
+    </>
   );
 };
 

@@ -144,8 +144,11 @@ export const sendRideCompletionEmail = async (email, name, price, from, to, dist
 };
 
 export const sendOrderReceipt = async (email, name, orderDetails) => {
-  const { restaurantName, menuItemName, price, deliveryAddress, deliveredAt } = orderDetails;
+  const { restaurantName, menuItemName, price, originalPrice, promoCode, discountPercentage, deliveryAddress, deliveredAt } = orderDetails;
   const subject = "Your Food Order Delivered - UTHAO";
+  
+  const hasDiscount = originalPrice && promoCode;
+  
   const body = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #0a0a0a;">
       <div style="background: linear-gradient(135deg, #1a1a1a 0%, #0d4d2d 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center; border-bottom: 3px solid #22c55e;">
@@ -167,15 +170,36 @@ export const sendOrderReceipt = async (email, name, orderDetails) => {
             <td style="padding: 8px 0; color: #22c55e;">Delivery Address:</td>
             <td style="padding: 8px 0;">${deliveryAddress}</td>
           </tr>
+          ${hasDiscount ? `
+          <tr>
+            <td style="padding: 8px 0; color: #22c55e;">Original Price:</td>
+            <td style="padding: 8px 0; text-decoration: line-through; color: #9ca3af;">৳${originalPrice.toFixed(2)}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #22c55e;">Promo Code Applied:</td>
+            <td style="padding: 8px 0; color: #10b981; font-weight: bold;">${promoCode} (${discountPercentage}% OFF)</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #22c55e;">Discount:</td>
+            <td style="padding: 8px 0; color: #10b981;">-৳${(originalPrice - price).toFixed(2)}</td>
+          </tr>
+          ` : ''}
           <tr>
             <td style="padding: 8px 0; color: #22c55e;">Total Amount:</td>
-            <td style="padding: 8px 0; font-weight: bold; color: #22c55e;">৳${price}</td>
+            <td style="padding: 8px 0; font-weight: bold; color: #22c55e;">৳${price.toFixed(2)}</td>
           </tr>
           <tr>
             <td style="padding: 8px 0; color: #22c55e;">Delivered At:</td>
             <td style="padding: 8px 0;">${deliveredAt}</td>
           </tr>
         </table>
+        ${hasDiscount ? `
+        <div style="background: linear-gradient(135deg, #064e3b 0%, #065f46 100%); border: 2px solid #22c55e; border-radius: 8px; padding: 15px; margin-bottom: 20px; text-align: center;">
+          <p style="color: #10b981; margin: 0; font-weight: bold; font-size: 16px;">
+            🎉 You saved ৳${(originalPrice - price).toFixed(2)} with promo code ${promoCode}!
+          </p>
+        </div>
+        ` : ''}
         <p style="margin-top: 32px; color: #22c55e; font-size: 0.95rem; text-align: center;">
           Thank you for choosing UTHAO!
         </p>

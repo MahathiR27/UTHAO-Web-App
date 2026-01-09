@@ -204,6 +204,9 @@ export const getUserCart = async (req, res) => {
             menuItemName: menuItem ? menuItem.name : 'Unknown Item',
             restaurantName: restaurant.RestaurantName,
             price: order.price,
+            originalPrice: order.originalPrice,
+            promoCode: order.promoCode,
+            discountPercentage: order.discountPercentage,
             deliveryAddress: order.deliveryAddress,
             date: order.date || order.createdAt
           });
@@ -364,6 +367,9 @@ export const getUserOrderHistory = async (req, res) => {
           menuItemName: menuItem ? menuItem.name : 'Unknown Item',
           deliveryAddress: order.deliveryAddress,
           totalAmount: order.price,
+          originalPrice: order.originalPrice,
+          promoCode: order.promoCode,
+          discountPercentage: order.discountPercentage,
           status: order.status
         });
       }
@@ -430,6 +436,9 @@ export const getUserOngoingActivity = async (req, res) => {
           menuItemName: menuItem ? menuItem.name : 'Unknown Item',
           deliveryAddress: order.deliveryAddress,
           totalAmount: order.price,
+          originalPrice: order.originalPrice,
+          promoCode: order.promoCode,
+          discountPercentage: order.discountPercentage,
           status: order.status,
           orderedAt: order.createdAt
         });
@@ -618,6 +627,24 @@ export const getFavourites = async (req, res) => {
 
     return res.status(200).json({
       favourites: user.favouriteRestaurants || []
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const getUserPromoCodes = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const promoCodes = await PromoCode.find({
+      userId: userId,
+      isUsed: false
+    }).sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      promoCodes: promoCodes
     });
   } catch (err) {
     console.error(err);

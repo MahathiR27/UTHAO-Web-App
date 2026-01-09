@@ -6,7 +6,7 @@ import toast from "react-hot-toast";
 import axios from "axios";
 
 // ---------------------------------- Keep maps disabled ---------------------------------------
-const ENABLE_MAPS = false;
+const ENABLE_MAPS = true;
 
 
 const libraries = ["places"];

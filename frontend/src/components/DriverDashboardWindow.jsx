@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { Star, Bell } from "lucide-react";
+import { Star } from "lucide-react";
 import { getUser, getToken } from "../utils/authUtils";
 
 const DriverDashboardWindow = () => {
@@ -14,9 +14,6 @@ const DriverDashboardWindow = () => {
   const [editingProfile, setEditingProfile] = useState(false);
   const [activeRideId, setActiveRideId] = useState(null);
   const [driverRating, setDriverRating] = useState(null);
-  const [notifications, setNotifications] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [showNotificationsModal, setShowNotificationsModal] = useState(false);
   const [editForm, setEditForm] = useState({
     fullName: "",
     UserName: "",
@@ -35,6 +32,8 @@ const DriverDashboardWindow = () => {
       return;
     }
 
+    let isMounted = true;
+
     const fetchDriver = async () => {
       try {
         const response = await axios({
@@ -42,6 +41,8 @@ const DriverDashboardWindow = () => {
           url: "http://localhost:5001/api/dashboard/get-driver",
           headers: { token: getToken() }
         });
+        
+        if (!isMounted) return;
         setDriver(response.data.driver);
         
         // Fetch driver rating
@@ -49,10 +50,14 @@ const DriverDashboardWindow = () => {
           const ratingResponse = await axios.get(
             `http://localhost:5001/api/dashboard/driver-rating/${response.data.driver._id}`
           );
-          setDriverRating(ratingResponse.data);
+          if (isMounted) {
+            setDriverRating(ratingResponse.data);
+          }
         } catch (ratingError) {
           console.error("Failed to load driver rating:", ratingError);
-          setDriverRating({ averageRating: 0, totalRatings: 0 });
+          if (isMounted) {
+            setDriverRating({ averageRating: 0, totalRatings: 0 });
+          }
         }
         
         // Check for active ride
@@ -63,30 +68,30 @@ const DriverDashboardWindow = () => {
             headers: { token: getToken() }
           });
           
-          if (activeRideResponse.data.activeRide) {
+          if (isMounted && activeRideResponse.data.activeRide) {
             setActiveRideId(activeRideResponse.data.activeRide._id);
           }
         } catch (rideError) {
           // Silently handle no active rides
         }
       } catch (error) {
-        toast.error("Failed to load driver details");
-        console.error(error);
+        if (isMounted) {
+          toast.error("Failed to load driver details");
+          console.error(error);
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     fetchDriver();
-    fetchNotifications();
-    
-    // Poll for new notifications every 30 seconds
-    const notificationInterval = setInterval(() => {
-      fetchNotifications();
-    }, 30000);
 
-    return () => clearInterval(notificationInterval);
-  }, [currentUser, navigate]);
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleToggleEditProfile = () => {
     if (!editingProfile) {
@@ -135,54 +140,6 @@ const DriverDashboardWindow = () => {
     }
   };
 
-  const fetchNotifications = async () => {
-    try {
-      const [notificationsRes, unreadCountRes] = await Promise.all([
-        axios.get('http://localhost:5001/api/dashboard/notifications', {
-          headers: { token: getToken() }
-        }),
-        axios.get('http://localhost:5001/api/dashboard/notifications/unread-count', {
-          headers: { token: getToken() }
-        })
-      ]);
-      setNotifications(notificationsRes.data);
-      setUnreadCount(unreadCountRes.data.count);
-    } catch (err) {
-      console.error('Error fetching notifications:', err);
-    }
-  };
-
-  const handleOpenNotifications = () => {
-    setShowNotificationsModal(true);
-  };
-
-  const handleMarkAsRead = async (notificationId) => {
-    try {
-      await axios.put(
-        `http://localhost:5001/api/dashboard/notifications/${notificationId}/read`,
-        {},
-        { headers: { token: getToken() } }
-      );
-      fetchNotifications();
-    } catch (err) {
-      console.error('Error marking notification as read:', err);
-    }
-  };
-
-  const handleMarkAllAsRead = async () => {
-    try {
-      await axios.put(
-        'http://localhost:5001/api/dashboard/notifications/mark-all-read',
-        {},
-        { headers: { token: getToken() } }
-      );
-      fetchNotifications();
-    } catch (err) {
-      console.error('Error marking all notifications as read:', err);
-      toast.error('Failed to mark all as read');
-    }
-  };
-
   if (loading) {
     return (
       <div className="card w-full max-w-6xl bg-base-100 shadow-xl border border-base-300">
@@ -212,17 +169,7 @@ const DriverDashboardWindow = () => {
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold">Driver Dashboard</h2>
           <div className="flex gap-2">
-            <button 
-              className="btn btn-sm btn-outline indicator" 
-              onClick={handleOpenNotifications}
-            >
-              {unreadCount > 0 && (
-                <span className="indicator-item badge badge-error badge-xs">
-                  {unreadCount}
-                </span>
-              )}
-              <Bell className="w-4 h-4" />
-            </button>
+
             <button
               className="btn btn-sm btn-outline"
               onClick={handleToggleEditProfile}
@@ -424,68 +371,6 @@ const DriverDashboardWindow = () => {
           </div>
         </div>
       </div>
-
-      {/* Notifications Modal */}
-      {showNotificationsModal && (
-        <div className="modal modal-open">
-          <div className="modal-box max-w-2xl">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold">Notifications</h3>
-              <button
-                className="btn btn-sm btn-ghost"
-                onClick={() => setShowNotificationsModal(false)}
-              >
-                ✕
-              </button>
-            </div>
-
-            {unreadCount > 0 && (
-              <div className="flex justify-end mb-2">
-                <button
-                  className="btn btn-xs btn-ghost"
-                  onClick={handleMarkAllAsRead}
-                >
-                  Mark all as read
-                </button>
-              </div>
-            )}
-
-            {notifications.length === 0 ? (
-              <div className="text-center py-8 text-base-content/60">
-                <Bell className="w-16 h-16 mx-auto mb-2 opacity-50" />
-                <p>No notifications</p>
-              </div>
-            ) : (
-              <div className="space-y-2 max-h-[60vh] overflow-y-auto">
-                {notifications.map((notification) => (
-                  <div
-                    key={notification._id}
-                    className={`p-4 rounded-lg border ${
-                      notification.isRead
-                        ? 'bg-base-200 border-base-300'
-                        : 'bg-base-100 border-primary cursor-pointer'
-                    }`}
-                    onClick={() => !notification.isRead && handleMarkAsRead(notification._id)}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1">
-                        <p className="font-medium">{notification.message}</p>
-                        <p className="text-xs text-base-content/60 mt-1">
-                          {new Date(notification.createdAt).toLocaleString()}
-                        </p>
-                      </div>
-                      {!notification.isRead && (
-                        <span className="badge badge-primary badge-sm">New</span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="modal-backdrop" onClick={() => setShowNotificationsModal(false)}></div>
-        </div>
-      )}
     </div>
   );
 };

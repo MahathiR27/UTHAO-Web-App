@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { X, Heart, Bell } from "lucide-react";
+import { X, Heart } from "lucide-react";
 import { getUser, getToken } from "../utils/authUtils";
 
 const UserDashboardWindow = () => {
@@ -40,9 +40,6 @@ const UserDashboardWindow = () => {
   const [showFavouritesModal, setShowFavouritesModal] = useState(false);
   const [favouriteRestaurants, setFavouriteRestaurants] = useState([]);
   const [favouritesLoading, setFavouritesLoading] = useState(false);
-  const [notifications, setNotifications] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [showNotificationsModal, setShowNotificationsModal] = useState(false);
 
   // Fetch user data on mount
   useEffect(() => {
@@ -57,6 +54,8 @@ const UserDashboardWindow = () => {
       setShowFirstLoginBanner(true);
     }
 
+    let isMounted = true;
+
     const fetchUser = async () => {
       try {
         const response = await axios({
@@ -64,26 +63,28 @@ const UserDashboardWindow = () => {
           url: "http://localhost:5001/api/dashboard/get-user",
           headers: { token: getToken() }
         });
-        setUser(response.data.user);
+        if (isMounted) {
+          setUser(response.data.user);
+        }
       } catch (error) {
-        const errorMsg = error.response?.data?.message || error.message || "Failed to load user details";
-        toast.error(errorMsg);
-        console.error("Dashboard Error:", error);
+        if (isMounted) {
+          const errorMsg = error.response?.data?.message || error.message || "Failed to load user details";
+          toast.error(errorMsg);
+          console.error("Dashboard Error:", error);
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     fetchUser();
-    fetchNotifications();
-    
-    // Poll for new notifications every 30 seconds
-    const notificationInterval = setInterval(() => {
-      fetchNotifications();
-    }, 30000);
 
-    return () => clearInterval(notificationInterval);
-  }, [currentUser, navigate]);
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Check if cart should be opened from URL parameter
   useEffect(() => {
@@ -349,56 +350,6 @@ const UserDashboardWindow = () => {
     navigate(`/menu-browser?id=${restaurantId}`);
   };
 
-  const fetchNotifications = async () => {
-    try {
-      const response = await axios.get(
-        'http://localhost:5001/api/dashboard/notifications',
-        { headers: { token: getToken() } }
-      );
-      setNotifications(response.data.notifications || []);
-      
-      const countResponse = await axios.get(
-        'http://localhost:5001/api/dashboard/notifications/unread-count',
-        { headers: { token: getToken() } }
-      );
-      setUnreadCount(countResponse.data.unreadCount || 0);
-    } catch (error) {
-      console.error("Failed to load notifications:", error);
-    }
-  };
-
-  const handleOpenNotifications = () => {
-    setShowNotificationsModal(true);
-  };
-
-  const handleMarkAsRead = async (notificationId) => {
-    try {
-      await axios.put(
-        `http://localhost:5001/api/dashboard/notifications/${notificationId}/read`,
-        {},
-        { headers: { token: getToken() } }
-      );
-      fetchNotifications();
-    } catch (error) {
-      console.error("Failed to mark notification as read:", error);
-    }
-  };
-
-  const handleMarkAllAsRead = async () => {
-    try {
-      await axios.put(
-        'http://localhost:5001/api/dashboard/notifications/mark-all-read',
-        {},
-        { headers: { token: getToken() } }
-      );
-      fetchNotifications();
-      toast.success("All notifications marked as read");
-    } catch (error) {
-      toast.error("Failed to mark all as read");
-      console.error(error);
-    }
-  };
-
   if (loading) {
     return (
       <div className="card w-full max-w-6xl bg-base-100 shadow-xl border border-base-300">
@@ -447,15 +398,6 @@ const UserDashboardWindow = () => {
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold">User Dashboard</h2>
           <div className="flex gap-2">
-            <button
-              className="btn btn-sm btn-outline indicator"
-              onClick={handleOpenNotifications}
-            >
-              {unreadCount > 0 && (
-                <span className="indicator-item badge badge-error badge-xs">{unreadCount}</span>
-              )}
-              <Bell className="w-4 h-4" />
-            </button>
             <button
               className="btn btn-sm btn-outline"
               onClick={() => setShowRefModal(true)}
@@ -636,7 +578,15 @@ const UserDashboardWindow = () => {
                                   <p className="text-xs text-gray-500 mt-1">📍 {item.deliveryAddress}</p>
                                 </div>
                                 <div className="text-right">
-                                  <p className="font-bold text-primary text-lg">${item.totalAmount}</p>
+                                  {item.originalPrice && item.promoCode ? (
+                                    <div>
+                                      <p className="text-xs text-gray-500 line-through">${item.originalPrice.toFixed(2)}</p>
+                                      <p className="font-bold text-success text-lg">${item.totalAmount.toFixed(2)}</p>
+                                      <p className="text-xs text-success">🎉 -{item.discountPercentage}% off</p>
+                                    </div>
+                                  ) : (
+                                    <p className="font-bold text-primary text-lg">${item.totalAmount.toFixed(2)}</p>
+                                  )}
                                   <p className="text-xs text-gray-500">{formatDate(item.date)}</p>
                                 </div>
                               </div>
@@ -674,7 +624,7 @@ const UserDashboardWindow = () => {
                                   </p>
                                 </div>
                                 <div className="text-right">
-                                  <p className="font-bold text-primary text-lg">${item.totalCost}</p>
+                                  <p className="font-bold text-primary text-lg">${item.totalCost.toFixed(2)}</p>
                                   <p className="text-xs text-gray-500">{formatDate(item.date)}</p>
                                 </div>
                               </div>
@@ -706,7 +656,15 @@ const UserDashboardWindow = () => {
                                   <p className="text-xs text-gray-500 mt-1">📍 {order.deliveryAddress}</p>
                                 </div>
                                 <div className="text-right">
-                                  <p className="font-bold text-primary text-lg">${order.totalAmount}</p>
+                                  {order.originalPrice && order.promoCode ? (
+                                    <div>
+                                      <p className="text-xs text-gray-500 line-through">${order.originalPrice.toFixed(2)}</p>
+                                      <p className="font-bold text-success text-lg">${order.totalAmount.toFixed(2)}</p>
+                                      <p className="text-xs text-success">🎉 -{order.discountPercentage}% off</p>
+                                    </div>
+                                  ) : (
+                                    <p className="font-bold text-primary text-lg">${order.totalAmount.toFixed(2)}</p>
+                                  )}
                                 </div>
                               </div>
                               <div className="divider my-2"></div>
@@ -738,7 +696,7 @@ const UserDashboardWindow = () => {
                                   <h4 className="font-semibold">To: {ride.destination}</h4>
                                 </div>
                                 <div className="text-right">
-                                  <p className="font-bold text-primary text-lg">${ride.totalCost}</p>
+                                  <p className="font-bold text-primary text-lg">${ride.totalCost.toFixed(2)}</p>
                                 </div>
                               </div>
                               <div className="divider my-2"></div>
@@ -831,9 +789,21 @@ const UserDashboardWindow = () => {
                         <h4 className="font-semibold">{order.menuItemName}</h4>
                         <p className="text-sm text-gray-600">{order.restaurantName}</p>
                         <p className="text-sm">{order.deliveryAddress}</p>
+                        {order.originalPrice && order.promoCode && (
+                          <p className="text-xs text-success mt-1">🎉 Promo applied: -{order.discountPercentage}% off</p>
+                        )}
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="font-bold text-primary">${order.price}</span>
+                        <div className="text-right">
+                          {order.originalPrice && order.promoCode ? (
+                            <>
+                              <p className="text-xs text-gray-500 line-through">${order.originalPrice.toFixed(2)}</p>
+                              <span className="font-bold text-success">${order.price.toFixed(2)}</span>
+                            </>
+                          ) : (
+                            <span className="font-bold text-primary">${order.price.toFixed(2)}</span>
+                          )}
+                        </div>
                         <button
                           onClick={() => handleCancelOrder(order._id)}
                           className="btn btn-sm btn-circle btn-error"
@@ -1013,67 +983,6 @@ const UserDashboardWindow = () => {
 
             <div className="modal-action">
               <button className="btn" onClick={() => setShowFavouritesModal(false)}>
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Notifications Modal */}
-      {showNotificationsModal && (
-        <div className="modal modal-open">
-          <div className="modal-box w-full max-w-2xl max-h-[90vh]">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-lg">Notifications</h3>
-              {unreadCount > 0 && (
-                <button onClick={handleMarkAllAsRead} className="btn btn-sm btn-ghost">
-                  Mark all as read
-                </button>
-              )}
-            </div>
-
-            {notifications.length === 0 ? (
-              <div className="text-center py-12">
-                <Bell className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-                <p className="text-xl text-gray-500">No notifications</p>
-              </div>
-            ) : (
-              <div className="space-y-2 overflow-y-auto max-h-[60vh]">
-                {notifications.map((notification) => (
-                  <div
-                    key={notification._id}
-                    className={`card ${notification.isRead ? 'bg-base-200' : 'bg-base-300'} shadow-sm`}
-                    onClick={() => !notification.isRead && handleMarkAsRead(notification._id)}
-                  >
-                    <div className="card-body p-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <p className={`text-sm ${!notification.isRead ? 'font-semibold' : ''}`}>
-                            {notification.message}
-                          </p>
-                          <p className="text-xs text-gray-500 mt-1">
-                            {new Date(notification.createdAt).toLocaleString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              hour: 'numeric',
-                              minute: '2-digit',
-                              hour12: true
-                            })}
-                          </p>
-                        </div>
-                        {!notification.isRead && (
-                          <div className="badge badge-primary badge-xs ml-2">New</div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className="modal-action">
-              <button className="btn" onClick={() => setShowNotificationsModal(false)}>
                 Close
               </button>
             </div>

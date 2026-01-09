@@ -170,6 +170,9 @@ export const completeDelivery = async (req, res) => {
           restaurantName: restaurant.RestaurantName,
           menuItemName: menuItem ? menuItem.name : 'Food Order',
           price: order.price,
+          originalPrice: order.originalPrice,
+          promoCode: order.promoCode,
+          discountPercentage: order.discountPercentage,
           deliveryAddress: order.deliveryAddress,
           deliveredAt: order.deliveredAt.toLocaleString('en-US', {
             year: 'numeric',
